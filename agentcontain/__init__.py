@@ -11,11 +11,14 @@ from .identity import ExecutionIdentity
 from .policy import Policy
 from .policy_distribution import PolicyBundle, PolicyRegistry
 from .state import LifecycleState, PlatformStateMachine
+from .store import EvidenceStore, InMemoryEvidenceStore
 
 __all__ = [
     "Admission",
     "Event",
     "EventLog",
+    "EvidenceStore",
+    "InMemoryEvidenceStore",
     "EvidenceEnvelope",
     "ExecutionIdentity",
     "LifecycleState",
