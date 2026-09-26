@@ -15,6 +15,8 @@ class EnforcementEngine(Protocol):
 
     def contain(self): ...
 
+    def receipt(self, secret: bytes, *, execution_id: str, policy_id: str): ...
+
 
 @dataclass
 class Admission:
@@ -42,6 +44,14 @@ def contain(admission: Admission) -> object:
     return report
 
 
+def containment_receipt(admission: Admission, secret: bytes):
+    """Create a signed/tamper-evident receipt bound to platform identity."""
+    report = getattr(admission.engine, "last_report", None)
+    if report is None:
+        raise RuntimeError("containment has not been executed")
+    return report.to_receipt(secret, execution_id=admission.identity.execution_id, policy_id=admission.identity.policy_id)
+
+
 def build_agentcontainment_engine(agent_id: str, *, cgroup_path: str | None = None) -> EnforcementEngine:
     """Construct the pinned AgentContainment controller.
 
@@ -61,6 +71,5 @@ def build_agentcontainment_engine(agent_id: str, *, cgroup_path: str | None = No
     runtime = Runtime(agent_id)
     if cgroup_path is None:
         return ContainmentController(runtime)
-
     enforcer = CgroupV2Enforcer({agent_id: cgroup_path})
     return ContainmentController(runtime, enforcers=[enforcer])
