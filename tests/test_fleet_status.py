@@ -30,6 +30,9 @@ def test_fleet_status_aggregates_reconciliation_states():
 
     assert report == FleetPolicyStatus(
         rollout_id="rollout-1",
+        policy_id="production",
+        policy_version=2,
+        policy_digest=bundle.policy_digest,
         total_targets=3,
         converged=0,
         pending=1,
@@ -56,6 +59,9 @@ def test_fleet_status_reports_full_convergence():
     report = fleet_policy_status(rollout, assignments)
 
     assert report.total_targets == 3
+    assert report.policy_id == "production"
+    assert report.policy_version == 2
+    assert report.policy_digest == bundle.policy_digest
     assert report.converged == 3
     assert report.pending == 0
     assert report.drifted == 0
@@ -64,13 +70,16 @@ def test_fleet_status_reports_full_convergence():
 
 
 def test_fleet_status_is_deterministic_and_serializable():
-    _, rollout = _rollout()
+    bundle, rollout = _rollout()
     assignments = PolicyAssignmentRegistry()
 
     report = fleet_policy_status(rollout, assignments)
 
     assert report.to_dict() == {
         "rollout_id": "rollout-1",
+        "policy_id": "production",
+        "policy_version": 2,
+        "policy_digest": bundle.policy_digest,
         "total_targets": 3,
         "converged": 0,
         "pending": 0,
@@ -80,6 +89,15 @@ def test_fleet_status_is_deterministic_and_serializable():
         "superseded": 0,
         "is_converged": False,
     }
+
+
+def test_reconciliation_carries_rollout_policy_identity():
+    bundle, rollout = _rollout()
+    reconciliation = reconcile_rollout(rollout, PolicyAssignmentRegistry())
+
+    assert reconciliation.policy_id == rollout.policy_id
+    assert reconciliation.policy_version == rollout.policy_version
+    assert reconciliation.policy_digest == rollout.policy_digest
 
 
 def test_reconciliation_state_enum_is_complete():
