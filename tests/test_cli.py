@@ -17,7 +17,7 @@ class FakeEngine:
 
 
 def test_cli_json_run(monkeypatch, capsys) -> None:
-    monkeypatch.setattr(cli, "build_agentcontainment_engine", lambda agent_id: FakeEngine())
+    monkeypatch.setattr(cli, "build_agentcontainment_engine", lambda agent_id, **kwargs: FakeEngine())
 
     assert cli.main([
         "run",
@@ -41,7 +41,7 @@ def test_cli_returns_nonzero_when_engine_cannot_be_loaded(monkeypatch, capsys) -
     def fail(_agent_id):
         raise RuntimeError("engine unavailable")
 
-    monkeypatch.setattr(cli, "build_agentcontainment_engine", fail)
+    monkeypatch.setattr(cli, "build_agentcontainment_engine", lambda agent_id, **kwargs: fail(agent_id))
 
     assert cli.main(["run", "--policy", "production"]) == 1
     assert "engine unavailable" in capsys.readouterr().err
