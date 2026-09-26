@@ -6,10 +6,28 @@
 
 AgentContain is the platform layer around the AgentContainment runtime enforcement engine.
 
+## Why this matters to the enterprise
+
+Autonomous agents can execute code, access data, call external services, and manage infrastructure. Traditional application controls and model-level instructions do not by themselves establish an authoritative runtime boundary around those actions.
+
+AgentContain is designed to provide that boundary from outside the agent trust boundary, with deterministic enforcement, independent verification, and machine-readable evidence.
+
+For enterprise security and governance teams, this translates into:
+
+- **Containment:** limit what an agent workload can do at runtime, including process and egress controls where supported.
+- **Fail-closed response:** fence and halt workloads when enforcement or recovery conditions require it.
+- **Auditability:** produce structured execution evidence and tamper-evident verification receipts.
+- **Policy traceability:** bind executions to policy identity, policy digests, and execution identity.
+- **Defense in depth:** complement existing containers, Kubernetes, gVisor, Kata, cgroups, and other isolation mechanisms.
+
+AgentContain can support security review and compliance evidence workflows, but it does not by itself make an organization compliant with SOC 2, HIPAA, or any other regulatory framework.
+
 ## Architecture
 
 ```
 AgentContain
+│
+├── Policy / Admission / Identity
 │
 ├── AgentContainment
 │   ├── Admission
@@ -37,7 +55,7 @@ The platform lifecycle is:
 The current enforcement implementation lives in the companion repository:
 
 - **AgentContainment** — the runtime enforcement technology and security-critical core.
-- **AgentContain** — the broader platform that will integrate enforcement, detection, recovery, proof, policy, and operational tooling.
+- **AgentContain** — the broader platform that integrates enforcement, detection, recovery, proof, policy, and operational tooling.
 
 This repository pins the AgentContainment engine as a Git submodule so the security-critical implementation remains independently reviewable while the platform surface is developed here.
 
@@ -52,17 +70,41 @@ This repository pins the AgentContainment engine as a Git submodule so the secur
 - Structured execution evidence.
 - Tamper-evident verification receipts.
 - Fail-closed recovery.
+- Portable evidence export for downstream systems.
 - Integration with existing sandboxing and orchestration infrastructure.
-
-AgentContain is designed to work **alongside** containers, Kubernetes, gVisor, Kata, cgroups, and other isolation mechanisms rather than requiring organizations to replace them.
 
 ## Security posture
 
-This project is early-stage research/prototype software.
+This project is **early-stage and actively developed toward a production 1.0 release**.
 
 Passing an adversarial test demonstrates behavior in the tested environment. It is not a universal security guarantee, formal verification, or cryptographic attestation of the host.
 
 Security-critical claims are documented in the AgentContainment security contract and backed by privileged integration tests where host/kernel behavior is required.
+
+The project intentionally distinguishes:
+
+- **Observed** — an event or result was recorded.
+- **Verified** — the defined verification procedure succeeded.
+- **Authenticated receipt** — evidence was bound to a tamper-evident, HMAC-authenticated receipt.
+- **Verified ≠ claim is true** — verification establishes that the specified procedure and evidence checks succeeded; it does not establish the truth of an arbitrary external claim.
+
+## Enterprise & support
+
+AgentContain is being developed with a clear separation between the open runtime and future centralized enterprise capabilities.
+
+The open platform is intended to provide the runtime enforcement, local verification, and evidence foundations. Enterprise capabilities can build above that foundation for organizations that need centralized governance across many agents and runtimes, including areas such as:
+
+- Fleet and workload inventory.
+- Centralized policy distribution.
+- Durable evidence storage and audit history.
+- Organization and project boundaries.
+- RBAC and enterprise identity integrations.
+- Alerts, webhooks, SIEM, and observability integrations.
+- Deployment and integration support.
+
+The security-critical runtime remains authoritative for enforcement. A future control plane must not be able to weaken local containment because of a network outage, billing state, unavailable service, or control-plane failure.
+
+**For enterprise integration, deployment support, or custom security engineering, contact the project maintainers.**
 
 ## Repository relationship
 
@@ -77,7 +119,6 @@ The legacy AgentContainment repository remains public and independently usable w
 ## License
 
 Apache-2.0.
-
 
 ## Real workload proof
 
