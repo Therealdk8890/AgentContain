@@ -11,50 +11,31 @@ from .policy import Policy
 
 
 def _policy_from_args(args: argparse.Namespace) -> Policy:
-    return Policy(
-        policy_id=args.policy,
-        capabilities=tuple(args.capability),
-        allowed_egress=tuple(args.egress),
-    )
+    return Policy(policy_id=args.policy, capabilities=tuple(args.capability), allowed_egress=tuple(args.egress))
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="agentcontain",
-        description="Runtime enforcement and proof platform for autonomous AI agents.",
-    )
+    parser = argparse.ArgumentParser(prog="agentcontain", description="Runtime enforcement and proof platform for autonomous AI agents.")
     sub = parser.add_subparsers(dest="command", required=True)
-
     run = sub.add_parser("run", help="admit an execution and optionally contain it")
     run.add_argument("--policy", required=True, help="policy identifier")
     run.add_argument("--agent-id", default="agent", help="agent identity")
     run.add_argument("--capability", action="append", default=[], help="declared capability")
     run.add_argument("--egress", action="append", default=[], help="allowed egress target")
-    run.add_argument(
-        "--contain",
-        action="store_true",
-        help="invoke external containment immediately after admission",
-    )
-    run.add_argument(
-        "--json",
-        action="store_true",
-        help="emit machine-readable execution state",
-    )
+    run.add_argument("--cgroup-path", help="existing Linux cgroup-v2 path for this workload")
+    run.add_argument("--contain", action="store_true", help="invoke external containment immediately after admission")
+    run.add_argument("--json", action="store_true", help="emit machine-readable execution state")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-
     if args.command == "run":
         policy = _policy_from_args(args)
         try:
-            engine = build_agentcontainment_engine(args.agent_id)
+            engine = build_agentcontainment_engine(args.agent_id, cgroup_path=args.cgroup_path)
             admission = admit(policy, agent_id=args.agent_id, engine=engine)
-            report = None
-            if args.contain:
-                report = contain(admission)
-
+            report = contain(admission) if args.contain else None
             payload = {
                 "execution_id": admission.identity.execution_id,
                 "agent_id": admission.identity.agent_id,
@@ -70,9 +51,9 @@ def main(argv: list[str] | None = None) -> int:
                     "certified": getattr(report, "certified", False),
                     "durable": getattr(report, "durable", False),
                     "external_verified": getattr(report, "external_verified", False),
+                    "enforcement_latency_seconds": getattr(report, "enforcement_latency_seconds", None),
                     "failures": list(getattr(report, "failures", ())),
                 }
-
             if args.json:
                 print(json.dumps(payload, sort_keys=True, indent=2))
             else:
@@ -90,7 +71,6 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:
             print(f"agentcontain: {exc}", file=sys.stderr)
             return 1
-
     return 2
 
 
