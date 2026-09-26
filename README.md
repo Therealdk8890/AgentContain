@@ -77,3 +77,26 @@ The legacy AgentContainment repository remains public and independently usable w
 ## License
 
 Apache-2.0.
+
+
+## Real workload proof
+
+The platform includes a Linux integration proof that exercises the full local path against a real workload:
+
+1. Create a dedicated cgroup-v2 workload boundary.
+2. Launch a real child process.
+3. Attach the child to that boundary.
+4. Bind the boundary to an AgentContain execution identity.
+5. Invoke the pinned AgentContainment cgroup provider.
+6. Independently verify the cgroup is no longer populated.
+7. Verify the workload exited.
+8. Bind the resulting containment evidence to an authenticated proof receipt.
+9. Verify that receipt with an offline verifier.
+
+The proof is deliberately environment-gated because it requires Linux cgroup v2 and appropriate host privileges/delegation:
+
+```bash
+AGENT_CONTAIN_RUN_REAL_CGROUP=1 pytest -q tests/integration/test_real_cgroup_execution.py
+```
+
+A successful run is evidence from that tested Linux environment. It does not establish a universal host-security claim. The receipt is HMAC-authenticated and tamper-evident; it is not a non-repudiable attestation.
