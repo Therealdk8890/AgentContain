@@ -70,6 +70,9 @@ class PolicyAssignmentRegistry:
     def get(self, assignment_id: str) -> PolicyAssignment | None:
         return self._assignments.get(assignment_id)
 
+    def all(self) -> tuple[PolicyAssignment, ...]:
+        return tuple(self._assignments.values())
+
     def activate(
         self,
         assignment_id: str,
