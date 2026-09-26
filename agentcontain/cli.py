@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from .engine import admit, build_agentcontainment_engine, contain
+from .engine import admit, build_agentcontainment_engine, containment_receipt, contain
 from .policy import Policy
 
 
@@ -23,6 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--capability", action="append", default=[], help="declared capability")
     run.add_argument("--egress", action="append", default=[], help="allowed egress target")
     run.add_argument("--cgroup-path", help="existing Linux cgroup-v2 path for this workload")
+    run.add_argument("--receipt-secret", help="HMAC secret used only to authenticate the local evidence receipt")
     run.add_argument("--contain", action="store_true", help="invoke external containment immediately after admission")
     run.add_argument("--json", action="store_true", help="emit machine-readable execution state")
     return parser
@@ -54,6 +55,9 @@ def main(argv: list[str] | None = None) -> int:
                     "enforcement_latency_seconds": getattr(report, "enforcement_latency_seconds", None),
                     "failures": list(getattr(report, "failures", ())),
                 }
+                if args.receipt_secret is not None:
+                    receipt = containment_receipt(admission, args.receipt_secret.encode("utf-8"))
+                    payload["receipt"] = receipt.to_dict()
             if args.json:
                 print(json.dumps(payload, sort_keys=True, indent=2))
             else:
