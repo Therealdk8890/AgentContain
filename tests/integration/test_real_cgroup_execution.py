@@ -31,7 +31,6 @@ def _enabled() -> bool:
 
 @pytest.mark.skipif(not _enabled(), reason="requires Linux cgroup-v2, root, and AGENT_CONTAIN_RUN_REAL_CGROUP=1")
 def test_real_workload_is_contained_and_receipt_is_verifiable():
-    from agent_containment.cgroup_enforcer import CgroupV2Enforcer
     from agent_containment.linux_supervisor import LinuxCgroupSupervisor
     from agent_containment.proof_receipt import ReceiptVerifier
 
