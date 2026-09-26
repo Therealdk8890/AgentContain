@@ -8,6 +8,7 @@ from .engine import Admission, admit, build_agentcontainment_engine, containment
 from .events import Event, EventLog
 from .evidence import EvidenceEnvelope, canonical_json
 from .fleet import Agent, FleetRegistry, FleetScope, Organization, Project, Runtime
+from .fleet_status import FleetPolicyStatus, fleet_policy_status
 from .identity import ExecutionIdentity
 from .policy import Policy
 from .policy_assignment import AssignmentState, PolicyAssignment, PolicyAssignmentRegistry
@@ -35,6 +36,8 @@ __all__ = [
     "Organization",
     "Project",
     "Runtime",
+    "FleetPolicyStatus",
+    "fleet_policy_status",
     "ExecutionIdentity",
     "LifecycleState",
     "PlatformStateMachine",
