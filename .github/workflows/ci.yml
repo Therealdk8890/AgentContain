@@ -66,10 +66,4 @@ jobs:
         env:
           AGENT_CONTAIN_RUN_REAL_CGROUP: "1"
         run: |
-          python -m pytest -q tests/integration/test_real_cgroup_execution.py
-
-      - name: Run host integration suite
-        env:
-          AGENT_CONTAIN_RUN_REAL_CGROUP: "1"
-        run: |
-          python -m pytest -q tests/integration/test_real_cgroup_execution.py
+          sudo -E python -m pytest -q tests/integration/test_real_cgroup_execution.py
