@@ -35,6 +35,9 @@ class TargetReconciliation:
 @dataclass(frozen=True)
 class RolloutReconciliation:
     rollout_id: str
+    policy_id: str
+    policy_version: int
+    policy_digest: str
     targets: tuple[TargetReconciliation, ...]
 
     @property
@@ -181,5 +184,8 @@ def reconcile_rollout(
 
     return RolloutReconciliation(
         rollout_id=rollout.rollout_id,
+        policy_id=rollout.policy_id,
+        policy_version=rollout.policy_version,
+        policy_digest=rollout.policy_digest,
         targets=tuple(results),
     )
