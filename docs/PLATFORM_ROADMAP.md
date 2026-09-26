@@ -36,6 +36,39 @@ Each transition should produce explicit state and evidence rather than relying o
 7. **Operator CLI** — make the lifecycle inspectable from a terminal.
 8. **Host integration** — wire policy and platform state into the existing Linux enforcement engine.
 
+## v0.1.5 — Commercial architecture foundation
+
+The commercial work begins before hosted services exist.
+
+### Contract
+
+- Define the Enterprise trust boundary in [ENTERPRISE_CONTRACT.md](ENTERPRISE_CONTRACT.md).
+- Define the transport-neutral Evidence API in [EVIDENCE_API.md](EVIDENCE_API.md).
+- Keep enforcement, verification, and local receipts usable without a control plane.
+
+### Implementation
+
+1. **Evidence envelope** — create a typed platform object representing one execution's evidence.
+2. **Canonical serialization** — define deterministic serialization and schema versioning.
+3. **Receipt binding** — bind the envelope to the existing receipt implementation without duplicating cryptographic logic.
+4. **Evidence export** — expose local evidence as a machine-readable artifact.
+5. **Ingestion seam** — define an interface for future Enterprise collectors without requiring HTTP/SaaS dependencies.
+6. **Fleet identity model** — establish organization/project/runtime/agent/execution identifiers as a separate governance layer.
+7. **Policy distribution contract** — central policy may distribute versioned policy, but local runtime remains authoritative for validation and enforcement.
+
+### Explicitly deferred
+
+- Hosted dashboard
+- User authentication / RBAC implementation
+- Billing
+- Multi-tenant database
+- SaaS deployment
+- Enterprise-only runtime dependencies
+
+## v0.1.5 success criterion
+
+A local execution can produce a complete, independently verifiable evidence envelope that an eventual Enterprise control plane can ingest without changing the meaning or authority of the underlying proof.
+
 ## Non-goals for v0.1
 
 - Replacing Kubernetes, gVisor, Kata, containers, or cgroups.
@@ -46,16 +79,4 @@ Each transition should produce explicit state and evidence rather than relying o
 
 ## Success criterion
 
-A reviewer should be able to trace one execution from admission through containment and recovery and answer:
-
-- What execution was admitted?
-- Under which policy?
-- What authority and epoch did it receive?
-- What boundary enforcement was applied?
-- What hostile actions were attempted?
-- Which proofs actually executed?
-- What happened during containment or recovery?
-- What evidence and receipt correspond to the execution?
-- What does the evidence prove, and what does it explicitly not prove?
-
-The platform is successful when those questions can be answered from structured artifacts rather than prose or agent self-report.
+A reviewer should be able to trace one execution from admission through containment and recovery and answer what execution was admitted, under which policy, what authority and epoch it received, what enforcement was applied, which proofs actually executed, what happened during containment or recovery, what evidence and receipt correspond to the execution, and what the evidence does and does not prove.
