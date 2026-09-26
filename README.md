@@ -67,9 +67,11 @@ This repository pins the AgentContainment engine as a Git submodule so the secur
 - Linux cgroup v2 process containment.
 - Kernel-level egress enforcement integrations.
 - Adversarial security testing.
-- Structured execution evidence.
+- Structured execution evidence envelopes.
+- Governance-bound execution evidence.
 - Tamper-evident verification receipts.
 - Fail-closed recovery.
+- Fleet inventory, policy rollout, reconciliation, and status history.
 - Portable evidence export for downstream systems.
 - Integration with existing sandboxing and orchestration infrastructure.
 
@@ -88,21 +90,34 @@ The project intentionally distinguishes:
 - **Authenticated receipt** — evidence was bound to a tamper-evident, HMAC-authenticated receipt.
 - **Verified ≠ claim is true** — verification establishes that the specified procedure and evidence checks succeeded; it does not establish the truth of an arbitrary external claim.
 
+## Fleet governance
+
+AgentContain now includes local governance primitives for managing fleets above the enforcement engine. These primitives are deliberately separate from runtime authority: governance can describe desired state, rollout progress, and fleet status without weakening or replacing local enforcement.
+
+Current platform primitives include:
+
+- **Organization → Project → Runtime → Agent** inventory and immutable governance scope.
+- **Policy assignments** carrying policy identity, version, digest, target, and explicit assignment state.
+- **Deterministic policy rollouts** with draft, staged, rolling-out, paused, converged, and rejected states.
+- **Deterministic reconciliation** that classifies target state such as converged, pending, drifted, missing, rejected, and superseded.
+- **Fleet policy status** as a stable machine-readable aggregate.
+- **Immutable status history** with monotonic snapshots, collision detection, and idempotent append behavior.
+
+The design intentionally keeps rollout and fleet observation from becoming enforcement authority. Local runtimes remain authoritative for accepting and enforcing policy.
+
 ## Enterprise & support
 
-AgentContain is being developed with a clear separation between the open runtime and future centralized enterprise capabilities.
+AgentContain is being developed with a clear separation between the open runtime/governance foundation and future centralized enterprise capabilities.
 
-The open platform is intended to provide the runtime enforcement, local verification, and evidence foundations. Enterprise capabilities can build above that foundation for organizations that need centralized governance across many agents and runtimes, including areas such as:
+The open platform already provides local fleet governance, runtime enforcement, verification, and evidence primitives. Future centralized capabilities can build above that foundation for organizations that need coordinated governance across many agents and runtimes, including areas such as:
 
-- Fleet and workload inventory.
-- Centralized policy distribution.
-- Durable evidence storage and audit history.
-- Organization and project boundaries.
+- Centralized policy distribution and fleet orchestration.
+- Durable evidence storage and long-term audit history.
 - RBAC and enterprise identity integrations.
 - Alerts, webhooks, SIEM, and observability integrations.
 - Deployment and integration support.
 
-The security-critical runtime remains authoritative for enforcement. A future control plane must not be able to weaken local containment because of a network outage, billing state, unavailable service, or control-plane failure.
+The security-critical runtime remains authoritative for enforcement. Fleet governance and any future centralized control plane must not be able to weaken local containment because of a network outage, billing state, unavailable service, or control-plane failure.
 
 **For enterprise integration, deployment support, or custom security engineering, contact the project maintainers.**
 
@@ -141,3 +156,14 @@ AGENT_CONTAIN_RUN_REAL_CGROUP=1 pytest -q tests/integration/test_real_cgroup_exe
 ```
 
 A successful run is evidence from that tested Linux environment. It does not establish a universal host-security claim. The receipt is HMAC-authenticated and tamper-evident; it is not a non-repudiable attestation.
+
+
+## Evidence model
+
+AgentContain exposes a transport-neutral `EvidenceEnvelope` for machine-readable execution evidence. The v1 envelope binds execution identity, ordered events, enforcement state, verification state, proof data, optional governance scope, provenance, and an optional authenticated receipt into one canonical representation.
+
+The envelope validates execution identity, contiguous event sequencing, supported verification states, and receipt identity binding where present. It can be serialized to deterministic JSON for storage or transport and reconstructed offline.
+
+Governance scope can be attached to execution evidence so downstream systems can associate an execution with its organization, project, runtime, and agent context without giving that governance layer authority over enforcement.
+
+**Evidence is evidence, not authority:** a valid envelope or receipt records and verifies the defined evidence procedure; it does not by itself prove an arbitrary external claim is true.
