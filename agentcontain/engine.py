@@ -39,7 +39,7 @@ def contain(admission: Admission) -> object:
     """Invoke AgentContainment and record the successful platform transition."""
     report = admission.engine.contain()
     if not getattr(report, "complete", True):
-        raise RuntimeError("enforcement engine reported containment failures")
+        raise RuntimeError("enforcement engine reported containment failures: " + "; ".join(getattr(report, "failures", ())) )
     admission.machine.contain()
     return report
 
