@@ -29,6 +29,9 @@ jobs:
       - name: Install AgentContain
         run: python -m pip install -e .
 
+      - name: Install test dependencies
+        run: python -m pip install pytest
+
       - name: Run unit tests
         run: python -m pytest -q tests -m "not integration"
 
@@ -54,6 +57,9 @@ jobs:
 
       - name: Install AgentContain
         run: python -m pip install -e .
+
+      - name: Install test dependencies
+        run: python -m pip install pytest
 
       - name: Inspect cgroup environment
         run: |
