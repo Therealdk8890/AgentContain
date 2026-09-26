@@ -25,6 +25,7 @@ class EvidenceEnvelope:
     verification: Mapping[str, Any] = None  # type: ignore[assignment]
     proof: Mapping[str, Any] = None  # type: ignore[assignment]
     receipt: Mapping[str, Any] | None = None
+    governance: Mapping[str, Any] | None = None
     provenance: Mapping[str, Any] = None  # type: ignore[assignment]
     schema_version: str = SCHEMA_VERSION
 
@@ -51,6 +52,7 @@ class EvidenceEnvelope:
         verification: Mapping[str, Any] | None = None,
         proof: Mapping[str, Any] | None = None,
         receipt: Mapping[str, Any] | None = None,
+        governance: Mapping[str, Any] | None = None,
         provenance: Mapping[str, Any] | None = None,
     ) -> "EvidenceEnvelope":
         return cls(
@@ -60,6 +62,7 @@ class EvidenceEnvelope:
             verification=dict(verification or {}),
             proof=dict(proof or {}),
             receipt=dict(receipt) if receipt is not None else None,
+            governance=dict(governance) if governance is not None else None,
             provenance=dict(provenance or {"producer": "agentcontain"}),
         )
 
@@ -136,6 +139,7 @@ class EvidenceEnvelope:
             "verification": dict(self.verification),
             "proof": dict(self.proof),
             "receipt": dict(self.receipt) if self.receipt is not None else None,
+            "governance": dict(self.governance) if self.governance is not None else None,
             "provenance": dict(self.provenance),
         }
 
@@ -154,6 +158,7 @@ class EvidenceEnvelope:
             "verification",
             "proof",
             "receipt",
+            "governance",
             "provenance",
         }
         if set(document) != expected:
@@ -167,6 +172,7 @@ class EvidenceEnvelope:
             verification=dict(document["verification"]),
             proof=dict(document["proof"]),
             receipt=dict(document["receipt"]) if document["receipt"] is not None else None,
+            governance=dict(document["governance"]) if document["governance"] is not None else None,
             provenance=dict(document["provenance"]),
             schema_version=document["schema_version"],
         )
