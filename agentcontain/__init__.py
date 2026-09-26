@@ -7,6 +7,7 @@ events, and transport-neutral evidence around the AgentContainment engine.
 from .engine import Admission, admit, build_agentcontainment_engine, containment_receipt, evidence_envelope
 from .events import Event, EventLog
 from .evidence import EvidenceEnvelope, canonical_json
+from .fleet import Agent, FleetRegistry, FleetScope, Organization, Project, Runtime
 from .identity import ExecutionIdentity
 from .policy import Policy
 from .policy_distribution import PolicyBundle, PolicyRegistry
@@ -20,6 +21,12 @@ __all__ = [
     "EvidenceStore",
     "InMemoryEvidenceStore",
     "EvidenceEnvelope",
+    "Agent",
+    "FleetRegistry",
+    "FleetScope",
+    "Organization",
+    "Project",
+    "Runtime",
     "ExecutionIdentity",
     "LifecycleState",
     "PlatformStateMachine",
