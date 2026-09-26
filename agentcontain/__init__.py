@@ -10,6 +10,7 @@ from .evidence import EvidenceEnvelope, canonical_json
 from .fleet import Agent, FleetRegistry, FleetScope, Organization, Project, Runtime
 from .identity import ExecutionIdentity
 from .policy import Policy
+from .policy_assignment import AssignmentState, PolicyAssignment, PolicyAssignmentRegistry
 from .policy_distribution import PolicyBundle, PolicyRegistry
 from .state import LifecycleState, PlatformStateMachine
 from .store import EvidenceStore, InMemoryEvidenceStore
@@ -31,6 +32,9 @@ __all__ = [
     "LifecycleState",
     "PlatformStateMachine",
     "Policy",
+    "AssignmentState",
+    "PolicyAssignment",
+    "PolicyAssignmentRegistry",
     "PolicyBundle",
     "PolicyRegistry",
     "admit",
