@@ -11,6 +11,12 @@ from .fleet import Agent, FleetRegistry, FleetScope, Organization, Project, Runt
 from .identity import ExecutionIdentity
 from .policy import Policy
 from .policy_assignment import AssignmentState, PolicyAssignment, PolicyAssignmentRegistry
+from .policy_reconciliation import (
+    RolloutReconciliation,
+    TargetReconciliation,
+    TargetReconciliationState,
+    reconcile_rollout,
+)
 from .policy_rollout import Rollout, RolloutState
 from .policy_distribution import PolicyBundle, PolicyRegistry
 from .state import LifecycleState, PlatformStateMachine
@@ -36,6 +42,10 @@ __all__ = [
     "AssignmentState",
     "PolicyAssignment",
     "PolicyAssignmentRegistry",
+    "TargetReconciliationState",
+    "TargetReconciliation",
+    "RolloutReconciliation",
+    "reconcile_rollout",
     "Rollout",
     "RolloutState",
     "PolicyBundle",
