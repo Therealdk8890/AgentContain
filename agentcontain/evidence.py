@@ -63,43 +63,6 @@ class EvidenceEnvelope:
             provenance=dict(provenance or {"producer": "agentcontain"}),
         )
 
-    def with_receipt(self, receipt: Mapping[str, Any]) -> "EvidenceEnvelope":
-        """Return a copy bound to an existing authenticated receipt.
-
-        The receipt is treated as an opaque transport-neutral mapping. Its
-        payload identity must agree with this envelope when the corresponding
-        fields are present. Cryptographic verification remains the
-        responsibility of the existing receipt verifier.
-        """
-        if not isinstance(receipt, Mapping):
-            raise TypeError("receipt must be a mapping")
-        required = {"payload", "digest", "signature"}
-        if set(receipt) != required:
-            raise ValueError("receipt has an invalid envelope")
-        payload = receipt["payload"]
-        if not isinstance(payload, Mapping):
-            raise TypeError("receipt payload must be a mapping")
-
-        for field in ("execution_id", "agent_id", "policy_id", "epoch"):
-            receipt_value = payload.get(field)
-            if receipt_value is not None and receipt_value != self.execution[field]:
-                raise ValueError(f"receipt {field} does not match evidence execution")
-
-        receipt_id = payload.get("receipt_id")
-        if receipt_id is not None and not isinstance(receipt_id, str):
-            raise ValueError("receipt receipt_id must be a string")
-
-        return EvidenceEnvelope(
-            execution=self.execution,
-            events=self.events,
-            enforcement=self.enforcement,
-            verification=self.verification,
-            proof=self.proof,
-            receipt=dict(receipt),
-            provenance=self.provenance,
-            schema_version=self.schema_version,
-        )
-
     def validate(self) -> None:
         required = {"execution_id", "agent_id", "policy_id", "policy_digest", "epoch"}
         missing = required - set(self.execution)
