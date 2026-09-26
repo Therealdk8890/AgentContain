@@ -5,8 +5,15 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 
-from .engine import admit, build_agentcontainment_engine, containment_receipt, contain
+from .engine import (
+    admit,
+    build_agentcontainment_engine,
+    containment_receipt,
+    contain,
+    evidence_envelope,
+)
 from .policy import Policy
 
 
@@ -24,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--egress", action="append", default=[], help="allowed egress target")
     run.add_argument("--cgroup-path", help="existing Linux cgroup-v2 path for this workload")
     run.add_argument("--receipt-secret", help="HMAC secret used only to authenticate the local evidence receipt")
+    run.add_argument("--evidence-output", help="write the complete evidence envelope to this JSON file")
     run.add_argument("--contain", action="store_true", help="invoke external containment immediately after admission")
     run.add_argument("--json", action="store_true", help="emit machine-readable execution state")
     return parser
@@ -37,6 +45,16 @@ def main(argv: list[str] | None = None) -> int:
             engine = build_agentcontainment_engine(args.agent_id, cgroup_path=args.cgroup_path)
             admission = admit(policy, agent_id=args.agent_id, engine=engine)
             report = contain(admission) if args.contain else None
+
+            receipt = (
+                containment_receipt(admission, args.receipt_secret.encode("utf-8"))
+                if args.receipt_secret is not None and report is not None
+                else None
+            )
+            envelope = evidence_envelope(admission)
+            if receipt is not None:
+                envelope = envelope.with_receipt(receipt.to_dict())
+
             payload = {
                 "execution_id": admission.identity.execution_id,
                 "agent_id": admission.identity.agent_id,
@@ -55,9 +73,15 @@ def main(argv: list[str] | None = None) -> int:
                     "enforcement_latency_seconds": getattr(report, "enforcement_latency_seconds", None),
                     "failures": list(getattr(report, "failures", ())),
                 }
-                if args.receipt_secret is not None:
-                    receipt = containment_receipt(admission, args.receipt_secret.encode("utf-8"))
+                if receipt is not None:
                     payload["receipt"] = receipt.to_dict()
+
+            if args.evidence_output:
+                Path(args.evidence_output).write_text(
+                    envelope.to_json() + "\n",
+                    encoding="utf-8",
+                )
+
             if args.json:
                 print(json.dumps(payload, sort_keys=True, indent=2))
             else:
@@ -71,6 +95,8 @@ def main(argv: list[str] | None = None) -> int:
                 if report is not None:
                     status = "VERIFIED" if report.certified and report.durable else "DEGRADED"
                     print(f"  Containment: {status}")
+                if args.evidence_output:
+                    print(f"  Evidence: {args.evidence_output}")
             return 0
         except Exception as exc:
             print(f"agentcontain: {exc}", file=sys.stderr)
