@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from .evidence import EvidenceEnvelope
 from .identity import ExecutionIdentity
 from .policy import Policy
 from .state import PlatformStateMachine
@@ -39,7 +40,10 @@ def contain(admission: Admission) -> object:
     """Invoke AgentContainment and record the successful platform transition."""
     report = admission.engine.contain()
     if not getattr(report, "complete", True):
-        raise RuntimeError("enforcement engine reported containment failures: " + "; ".join(getattr(report, "failures", ())) )
+        raise RuntimeError(
+            "enforcement engine reported containment failures: "
+            + "; ".join(getattr(report, "failures", ()))
+        )
     admission.machine.contain()
     return report
 
@@ -49,27 +53,65 @@ def containment_receipt(admission: Admission, secret: bytes):
     report = getattr(admission.engine, "last_report", None)
     if report is None:
         raise RuntimeError("containment has not been executed")
-    return report.to_receipt(secret, execution_id=admission.identity.execution_id, policy_id=admission.identity.policy_id)
+    return report.to_receipt(
+        secret,
+        execution_id=admission.identity.execution_id,
+        policy_id=admission.identity.policy_id,
+    )
 
 
-def build_agentcontainment_engine(agent_id: str, *, cgroup_path: str | None = None) -> EnforcementEngine:
-    """Construct the pinned AgentContainment controller.
+def evidence_envelope(
+    admission: Admission,
+    *,
+    report: object | None = None,
+    receipt: object | None = None,
+) -> EvidenceEnvelope:
+    """Build portable evidence from one admitted execution.
 
-    If cgroup_path is supplied, use the real cgroup-v2 enforcement provider.
-    The adapter never guesses or broadens the host trust boundary.
+    Receipt creation remains separate so callers can choose whether to include
+    authenticated receipt material. When supplied, the receipt is bound to the
+    platform execution identity without rewriting its cryptographic fields.
     """
-    try:
-        from agent_containment.containment import ContainmentController
-        from agent_containment.cgroup_enforcer import CgroupV2Enforcer
-        from agent_containment.runtime import Runtime
-    except ImportError as exc:
-        raise RuntimeError(
-            "AgentContainment is not installed; initialize the pinned submodule "
-            "and install its Python package before using the runtime adapter"
-        ) from exc
+    enforcement = {}
+    verification = {"status": "observed", "method": "platform-lifecycle"}
+    proof = {}
+    if report is not None:
+        enforcement = {
+            "complete": bool(getattr(report, "complete", False)),
+            "external_verified": bool(getattr(report, "external_verified", False)),
+            "failures": list(getattr(report, "failures", ())),
+        }
+        certified = bool(getattr(report, "certified", False))
+        durable = bool(getattr(report, "durable", False))
+        verification = {
+            "status": "verified" if certified and durable else "degraded",
+            "method": "agentcontainment",
+            "certified": certified,
+            "durable": durable,
+            "enforcement_latency_seconds": getattr(
+                report, "enforcement_latency_seconds", None
+            ),
+        }
+        proof = {
+            "claims": list(getattr(report, "stages", ())),
+        }
 
-    runtime = Runtime(agent_id)
-    if cgroup_path is None:
-        return ContainmentController(runtime)
-    enforcer = CgroupV2Enforcer({agent_id: cgroup_path})
-    return ContainmentController(runtime, enforcers=[enforcer])
+    envelope = EvidenceEnvelope.from_execution(
+        execution={
+            "execution_id": admission.identity.execution_id,
+            "agent_id": admission.identity.agent_id,
+            "policy_id": admission.identity.policy_id,
+            "policy_digest": admission.identity.policy_digest,
+            "epoch": admission.identity.epoch,
+        },
+        events=tuple(event.to_dict() for event in admission.machine.events.events),
+        enforcement=enforcement,
+        verification=verification,
+        proof=proof,
+        provenance={"producer": "agentcontain"},
+    )
+    if receipt is not None:
+        envelope = envelope.with_receipt(
+            receipt.to_dict() if hasattr(receipt, "to_dict") else receipt
+        )
+    return envelope
