@@ -72,4 +72,4 @@ jobs:
         env:
           AGENT_CONTAIN_RUN_REAL_CGROUP: "1"
         run: |
-          sudo -E python -m pytest -q tests/integration/test_real_cgroup_execution.py
+          sudo -E "$pythonLocation/bin/python" -m pytest -q tests/integration/test_real_cgroup_execution.py
