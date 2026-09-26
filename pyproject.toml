@@ -21,3 +21,6 @@ where = ["."]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: host or environment-dependent integration proof",
+]
