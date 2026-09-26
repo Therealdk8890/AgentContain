@@ -9,6 +9,7 @@ from .events import Event, EventLog
 from .evidence import EvidenceEnvelope, canonical_json
 from .fleet import Agent, FleetRegistry, FleetScope, Organization, Project, Runtime
 from .fleet_status import FleetPolicyStatus, fleet_policy_status
+from .fleet_status_history import FleetPolicyStatusHistory, FleetPolicyStatusSnapshot
 from .identity import ExecutionIdentity
 from .policy import Policy
 from .policy_assignment import AssignmentState, PolicyAssignment, PolicyAssignmentRegistry
@@ -38,6 +39,8 @@ __all__ = [
     "Runtime",
     "FleetPolicyStatus",
     "fleet_policy_status",
+    "FleetPolicyStatusHistory",
+    "FleetPolicyStatusSnapshot",
     "ExecutionIdentity",
     "LifecycleState",
     "PlatformStateMachine",
