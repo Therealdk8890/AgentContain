@@ -96,3 +96,32 @@ def test_evidence_rejects_admission_policy_divergence():
 
     with pytest.raises(RuntimeError, match="policy_id|policy_digest"):
         evidence_envelope(admission)
+
+
+def test_evidence_can_bind_validated_fleet_governance_scope():
+    from agentcontain.fleet import Agent, FleetRegistry, Organization, Project, Runtime
+
+    fleet = FleetRegistry()
+    organization = fleet.register_organization(Organization.create("acme"))
+    project = fleet.register_project(Project.create(organization.organization_id, "payments"))
+    runtime = fleet.register_runtime(Runtime.create(project.project_id, "prod"))
+    agent = fleet.register_agent(Agent.create(runtime.runtime_id, "checkout", agent_id="agent-1"))
+
+    admission = admit(Policy("production"), agent_id=agent.agent_id, engine=FakeEngine())
+    evidence = evidence_envelope(admission, fleet=fleet)
+
+    assert evidence.governance == {
+        "organization_id": organization.organization_id,
+        "project_id": project.project_id,
+        "runtime_id": runtime.runtime_id,
+        "agent_id": agent.agent_id,
+    }
+
+
+def test_evidence_governance_requires_registered_agent():
+    from agentcontain.fleet import FleetRegistry
+
+    admission = admit(Policy("production"), agent_id="unregistered", engine=FakeEngine())
+
+    with pytest.raises(KeyError):
+        evidence_envelope(admission, fleet=FleetRegistry())
