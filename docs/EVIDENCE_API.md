@@ -30,6 +30,12 @@ The canonical envelope is conceptually:
   "verification": {"status": "verified", "method": "…", "environment": {}},
   "proof": {"claims": [], "executed_proofs": []},
   "receipt": {},
+  "governance": {
+    "organization_id": "…",
+    "project_id": "…",
+    "runtime_id": "…",
+    "agent_id": "…"
+  },
   "provenance": {"producer": "agentcontain", "created_at": "…"}
 }
 ~~~
@@ -109,3 +115,16 @@ Likewise, a cryptographically valid receipt does not prove that the underlying h
 The first implementation should be transport-neutral. Local consumers must be able to use the same evidence object without requiring a SaaS connection, specific database, HTTP framework, or billing entitlement.
 
 The initial implementation can therefore expose a Python-native evidence envelope and canonical serialization before adding an HTTP API.
+
+
+## Governance binding
+
+An evidence envelope MAY include a `governance` mapping containing the
+originating `organization_id`, `project_id`, `runtime_id`,
+and `agent_id`. When present, these values are derived from validated
+local fleet inventory rather than caller-supplied control-plane metadata.
+
+Governance scope is attribution metadata. It does not grant authority to the
+control plane and does not change the meaning of runtime enforcement or proof.
+Historical evidence retains the governance scope associated with its originating
+execution.

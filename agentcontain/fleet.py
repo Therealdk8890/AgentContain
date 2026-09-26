@@ -141,6 +141,18 @@ class FleetRegistry:
         self.agents[agent.agent_id] = agent
         return agent
 
+    def governance_for_agent(self, agent_id: str) -> dict[str, str]:
+        agent = self.agents.get(agent_id)
+        if agent is None:
+            raise KeyError(agent_id)
+        scope = self.scope_for_agent(agent_id)
+        return {
+            "organization_id": scope.organization_id,
+            "project_id": scope.project_id,
+            "runtime_id": scope.runtime_id,
+            "agent_id": agent.agent_id,
+        }
+
     def scope_for_agent(self, agent_id: str) -> FleetScope:
         agent = self.agents.get(agent_id)
         if agent is None:
