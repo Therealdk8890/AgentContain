@@ -11,6 +11,7 @@ from .fleet import Agent, FleetRegistry, FleetScope, Organization, Project, Runt
 from .identity import ExecutionIdentity
 from .policy import Policy
 from .policy_assignment import AssignmentState, PolicyAssignment, PolicyAssignmentRegistry
+from .policy_rollout import Rollout, RolloutState
 from .policy_distribution import PolicyBundle, PolicyRegistry
 from .state import LifecycleState, PlatformStateMachine
 from .store import EvidenceStore, InMemoryEvidenceStore
@@ -35,6 +36,8 @@ __all__ = [
     "AssignmentState",
     "PolicyAssignment",
     "PolicyAssignmentRegistry",
+    "Rollout",
+    "RolloutState",
     "PolicyBundle",
     "PolicyRegistry",
     "admit",
