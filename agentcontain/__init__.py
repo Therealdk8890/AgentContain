@@ -8,6 +8,7 @@ from .events import Event, EventLog
 from .evidence import EvidenceEnvelope, canonical_json
 from .identity import ExecutionIdentity
 from .policy import Policy
+from .policy_distribution import PolicyBundle, PolicyRegistry
 from .state import LifecycleState, PlatformStateMachine
 
 __all__ = [
@@ -18,5 +19,7 @@ __all__ = [
     "LifecycleState",
     "PlatformStateMachine",
     "Policy",
+    "PolicyBundle",
+    "PolicyRegistry",
     "canonical_json",
 ]
