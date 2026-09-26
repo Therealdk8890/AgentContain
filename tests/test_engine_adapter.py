@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import pytest
 
 from agentcontain import Policy
-from agentcontain.engine import admit, contain, containment_receipt
+from agentcontain.engine import admit, contain, containment_receipt, evidence_envelope
 
 
 @dataclass(frozen=True)
@@ -70,3 +70,29 @@ def test_containment_receipt_binds_platform_identity():
     receipt = containment_receipt(admission, b"secret")
     assert receipt.execution_id == admission.identity.execution_id
     assert receipt.policy_id == "production"
+
+def test_evidence_uses_locally_accepted_policy_identity():
+    policy = Policy("production", version=7, capabilities=("read",))
+    engine = FakeEngine()
+    admission = admit(policy, agent_id="agent-1", engine=engine)
+
+    evidence = evidence_envelope(admission)
+
+    assert evidence.execution["policy_id"] == policy.policy_id
+    assert evidence.execution["policy_digest"] == policy.digest
+    assert evidence.execution["epoch"] == admission.identity.epoch
+
+
+def test_evidence_rejects_admission_policy_divergence():
+    policy = Policy("production", version=1)
+    engine = FakeEngine()
+    admission = admit(policy, agent_id="agent-1", engine=engine)
+    conflicting = Policy("production", version=2)
+    object.__setattr__(
+        admission,
+        "policy",
+        type(admission.policy).from_policy(conflicting),
+    )
+
+    with pytest.raises(RuntimeError, match="policy_id|policy_digest"):
+        evidence_envelope(admission)
