@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from .events import Event
 from .identity import ExecutionIdentity
 from .policy import Policy
 from .state import PlatformStateMachine
@@ -26,34 +25,16 @@ class Admission:
     engine: EnforcementEngine
 
 
-def admit(
-    policy: Policy,
-    *,
-    agent_id: str,
-    engine: EnforcementEngine,
-) -> Admission:
-    """Admit one execution and bind it to policy and enforcement state.
-
-    The platform creates the execution identity before invoking enforcement.
-    The engine remains the authority for host/runtime containment.
-    """
-    identity = ExecutionIdentity.create(
-        agent_id,
-        policy.policy_id,
-        policy.digest,
-    )
+def admit(policy: Policy, *, agent_id: str, engine: EnforcementEngine) -> Admission:
+    """Admit one execution and bind it to AgentContainment enforcement."""
+    identity = ExecutionIdentity.create(agent_id, policy.policy_id, policy.digest)
     machine = PlatformStateMachine(identity)
     machine.admit()
     return Admission(identity=identity, machine=machine, engine=engine)
 
 
 def contain(admission: Admission) -> object:
-    """Invoke the external enforcement engine and record the platform event.
-
-    The platform never treats a requested containment operation as proof of
-    containment. The returned engine report remains the source of enforcement
-    evidence; the platform event records that the operation completed.
-    """
+    """Invoke AgentContainment and record the successful platform transition."""
     report = admission.engine.contain()
     if not getattr(report, "complete", True):
         raise RuntimeError("enforcement engine reported containment failures")
@@ -61,14 +42,15 @@ def contain(admission: Admission) -> object:
     return report
 
 
-def build_agentcontainment_engine(agent_id: str) -> EnforcementEngine:
-    """Construct the real AgentContainment controller.
+def build_agentcontainment_engine(agent_id: str, *, cgroup_path: str | None = None) -> EnforcementEngine:
+    """Construct the pinned AgentContainment controller.
 
-    This import is deliberately isolated to the adapter so the platform's
-    policy/state primitives remain independently testable.
+    If cgroup_path is supplied, use the real cgroup-v2 enforcement provider.
+    The adapter never guesses or broadens the host trust boundary.
     """
     try:
         from agent_containment.containment import ContainmentController
+        from agent_containment.cgroup_enforcer import CgroupV2Enforcer
         from agent_containment.runtime import Runtime
     except ImportError as exc:
         raise RuntimeError(
@@ -77,4 +59,8 @@ def build_agentcontainment_engine(agent_id: str) -> EnforcementEngine:
         ) from exc
 
     runtime = Runtime(agent_id)
-    return ContainmentController(runtime)
+    if cgroup_path is None:
+        return ContainmentController(runtime)
+
+    enforcer = CgroupV2Enforcer({agent_id: cgroup_path})
+    return ContainmentController(runtime, enforcers=[enforcer])
