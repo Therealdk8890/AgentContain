@@ -23,10 +23,10 @@ An Enterprise control plane must never be able to turn a failed local enforcemen
 | Local proof receipts | Yes | Central ingestion and retention |
 | Adversarial proof execution | Yes | Fleet evidence aggregation |
 | Policy management | Local | Centralized |
-| Fleet/workload inventory | Local execution context | Yes |
+| Fleet/workload inventory | Local governance primitives | Yes |
 | Central evidence store | No | Yes |
-| Audit history | Local artifacts | Yes |
-| Organization/project boundaries | No | Yes |
+| Audit history | Local artifacts / local history primitives | Yes |
+| Organization/project boundaries | Local governance primitives | Yes |
 | RBAC | No | Yes |
 | Alerts/integrations | Local integration points | Yes |
 | Billing/subscription | No | Yes |
@@ -56,7 +56,7 @@ If control-plane state conflicts with independently produced runtime evidence, t
 
 ## Evidence ingestion
 
-Enterprise consumes the Evidence API defined in [EVIDENCE_API.md](EVIDENCE_API.md). The minimum ingestion unit is an execution evidence envelope containing execution identity, policy identity/digest, event sequence, enforcement result, verification result, proof references, receipt, provenance, and environment metadata.
+Enterprise consumes the Evidence API defined in [EVIDENCE_API.md](EVIDENCE_API.md). Local evidence and governance primitives may exist in the open package; Enterprise adds centralized ingestion and retention. The minimum ingestion unit is an execution evidence envelope containing execution identity, policy identity/digest, event sequence, enforcement result, verification result, proof references, receipt, provenance, and environment metadata.
 
 Enterprise storage must preserve the original evidence rather than replacing it with a derived status.
 
@@ -72,7 +72,9 @@ Enterprise data is scoped at minimum by:
 
 `organization → project → runtime → agent → execution → evidence`
 
-Authorization must be enforced server-side for every tenant-scoped read and write. Evidence from one organization must not become visible through another organization's API, dashboard, export, or search path.
+The open package may define these governance identifiers and validate their local ancestry. That does **not** make the open package a multi-tenant control plane: it does not provide hosted tenant isolation, server-side RBAC, or centralized authorization. Those are Enterprise responsibilities.
+
+Enterprise authorization must be enforced server-side for every tenant-scoped read and write. Evidence from one organization must not become visible through another organization's API, dashboard, export, or search path.
 
 ## Commercial boundary
 
