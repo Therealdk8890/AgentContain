@@ -1,16 +1,20 @@
 # AgentContain
 
-**Runtime enforcement and proof platform for autonomous AI agents.**
+**Runtime security and evidence platform for autonomous AI agents.**
 
 > **Don't ask the agent to enforce its own boundaries. Enforce them from outside the agent trust boundary.**
 
-AgentContain is the platform layer around the AgentContainment runtime enforcement engine.
+AgentContain is the buyer-facing platform layer around the AgentContainment runtime enforcement engine. It is designed to answer a practical enterprise question: **what is an autonomous agent allowed to do, what happens when it crosses that boundary, and can we prove what happened?**
 
-## Why this matters to the enterprise
+## The product
 
-Autonomous agents can execute code, access data, call external services, and manage infrastructure. Traditional application controls and model-level instructions do not by themselves establish an authoritative runtime boundary around those actions.
+Autonomous agents can execute code, access data, call external services, and manage infrastructure. The operational problem is not only observing those actions; it is controlling them, responding when policy is violated, and producing evidence that the control actually operated.
 
-AgentContain is designed to provide that boundary from outside the agent trust boundary, with deterministic enforcement, independent verification, and machine-readable evidence.
+AgentContain is designed as a runtime security and evidence platform: define policy, establish execution identity, enforce boundaries outside the agent trust boundary, detect violations, contain and recover workloads, and produce machine-readable evidence for security operations and audit workflows.
+
+The core workflow is:
+
+**Discover → Authorize → Enforce → Detect → Contain → Verify → Recover → Prove**
 
 For enterprise security and governance teams, this translates into:
 
@@ -52,7 +56,7 @@ agentcontain run --policy demo --agent-id demo-agent --contain
 
 This exercises the real runtime adapter and may require a Linux environment with the privileges and cgroup setup required by the selected enforcement path. It is not the no-root demonstration path.
 
-A dedicated **no-root demo path** is planned to demonstrate the platform lifecycle, evidence envelope, and receipt verification without requiring host enforcement privileges. It will be explicitly labeled as simulated containment rather than presented as kernel-level proof.
+A dedicated no-root demonstration is available with `agentcontain demo`. It demonstrates the lifecycle, evidence envelope, and receipt semantics without host privileges. It is explicitly **simulated** and must not be interpreted as kernel-level containment proof.
 
 ## Architecture
 
@@ -90,6 +94,37 @@ The current enforcement implementation lives in the companion repository:
 - **AgentContain** — the broader platform that integrates enforcement, detection, recovery, proof, policy, and operational tooling.
 
 This repository pins the AgentContainment engine as a Git submodule so the security-critical implementation remains independently reviewable while the platform surface is developed here.
+
+## Buyer outcomes
+
+AgentContain is being built for teams operating autonomous agents where an execution boundary, incident response path, and defensible evidence trail matter.
+
+### Core buyer workflows
+
+- **Runtime authorization:** define what an agent, workload, credential, and network path are permitted to do.
+- **Policy violation response:** detect an attempted violation and move from authorization failure to runtime containment when required.
+- **Incident containment:** fence execution, invalidate stale authority, revoke credential use, and halt the workload through the enforcement layer.
+- **Verification and evidence:** distinguish an observed event from successful verification and bind the resulting evidence to an authenticated receipt.
+- **Recovery:** release external enforcement only after the required conditions are independently verified, then restore execution under a fresh authority epoch.
+- **Fleet governance:** associate agents with organization, project, runtime, policy, status, and rollout state without allowing governance infrastructure to weaken local enforcement.
+
+### What a buyer should eventually see
+
+A contained incident should be understandable without reading source code:
+
+```text
+Agent:        payments-agent-1842
+Policy:       payments-prod-v7
+Event:        unauthorized credential use
+Decision:     DENY
+Containment:  runtime fenced
+Credentials:  stale authority revoked
+Verification: enforcement independently verified
+Receipt:      authenticated
+Recovery:     pending operator approval
+```
+
+The commercial platform layer will add the operator workflow, centralized evidence, identity/RBAC, integrations, and fleet operations around the open enforcement foundation.
 
 ## What the platform is designed to provide
 
@@ -139,6 +174,12 @@ The design intentionally keeps rollout and fleet observation from becoming enfor
 
 The open package provides these as **local governance primitives**. They do not constitute a hosted multi-tenant control plane, server-side RBAC system, or centralized enforcement authority.
 
+## Commercial product boundary
+
+The open foundation is intentionally inspectable and independently usable. The commercial AgentContain platform is where centralized operations become the product: fleet-wide policy distribution, durable evidence retention, incident workflows, enterprise identity and RBAC, SIEM/SOAR integrations, deployment automation, and supported production operations.
+
+The enforcement boundary remains local and authoritative. A hosted control plane must never be able to weaken containment because of network failure, billing state, service outage, or loss of connectivity.
+
 ## Enterprise & support
 
 AgentContain is being developed with a clear separation between the open runtime/governance foundation and future centralized enterprise capabilities.
@@ -153,7 +194,7 @@ The open platform provides local fleet governance, runtime enforcement, verifica
 
 The security-critical runtime remains authoritative for enforcement. Fleet governance and any future centralized control plane must not be able to weaken local containment because of a network outage, billing state, unavailable service, or control-plane failure.
 
-**For enterprise integration, deployment support, or custom security engineering, contact the project maintainers.**
+**For enterprise integration, design-partner deployments, or custom security engineering, contact the project maintainers.**
 
 ## Repository relationship
 
