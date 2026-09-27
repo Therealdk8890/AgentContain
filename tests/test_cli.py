@@ -113,3 +113,88 @@ def test_cli_reads_receipt_secret_from_file(monkeypatch, tmp_path, capsys) -> No
     assert cli.main(["run", "--policy", "production", "--agent-id", "agent-1", "--contain", "--receipt-secret-file", str(secret), "--json"]) == 0
     assert captured["secret"] == b"test-secret"
     json.loads(capsys.readouterr().out)
+
+
+def test_cli_inspects_evidence_file(tmp_path, capsys) -> None:
+    from agentcontain.evidence import EvidenceEnvelope
+
+    envelope = EvidenceEnvelope.from_execution(
+        execution={
+            "execution_id": "exec-1",
+            "agent_id": "agent-1",
+            "policy_id": "payments",
+            "policy_digest": "sha256:test",
+            "epoch": 3,
+        },
+        events=(
+            {
+                "name": "admission_verified",
+                "execution_id": "exec-1",
+                "epoch": 3,
+                "sequence": 1,
+                "timestamp": "2026-09-27T00:00:00+00:00",
+                "details": {},
+            },
+            {
+                "name": "anomaly_detected",
+                "execution_id": "exec-1",
+                "epoch": 3,
+                "sequence": 2,
+                "timestamp": "2026-09-27T00:00:01+00:00",
+                "details": {"reason": "unauthorized_action"},
+            },
+            {
+                "name": "containment_verified",
+                "execution_id": "exec-1",
+                "epoch": 3,
+                "sequence": 3,
+                "timestamp": "2026-09-27T00:00:02+00:00",
+                "details": {},
+            },
+        ),
+        verification={"status": "verified", "method": "test"},
+        proof={"checks": ["containment"]},
+    )
+    evidence = tmp_path / "evidence.json"
+    evidence.write_text(envelope.to_json(), encoding="utf-8")
+
+    assert cli.main(["inspect", "--evidence-file", str(evidence)]) == 0
+    output = capsys.readouterr().out
+    assert "Agent:        agent-1" in output
+    assert "Policy:       payments" in output
+    assert "Event:        anomaly_detected" in output
+    assert "Status:       VERIFIED" in output
+    assert "2. anomaly_detected" in output
+
+
+def test_cli_inspect_json_is_machine_readable(tmp_path, capsys) -> None:
+    from agentcontain.evidence import EvidenceEnvelope
+
+    envelope = EvidenceEnvelope.from_execution(
+        execution={
+            "execution_id": "exec-2",
+            "agent_id": "agent-2",
+            "policy_id": "payments",
+            "policy_digest": "sha256:test",
+            "epoch": 1,
+        },
+        events=(
+            {
+                "name": "admission_verified",
+                "execution_id": "exec-2",
+                "epoch": 1,
+                "sequence": 1,
+                "timestamp": "2026-09-27T00:00:00+00:00",
+                "details": {},
+            },
+        ),
+        verification={"status": "verified"},
+    )
+    evidence = tmp_path / "evidence.json"
+    evidence.write_text(envelope.to_json(), encoding="utf-8")
+
+    assert cli.main(["inspect", "--evidence-file", str(evidence), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["agent"]["agent_id"] == "agent-2"
+    assert payload["incident"]["execution_id"] == "exec-2"
+    assert payload["timeline"][0]["name"] == "admission_verified"
