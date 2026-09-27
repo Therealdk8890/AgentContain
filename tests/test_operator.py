@@ -1,4 +1,5 @@
 from agentcontain.evidence import EvidenceEnvelope
+from agentcontain.external_evidence import ExternalEvidenceReference
 from agentcontain.fleet import Agent, FleetRegistry, Organization, Project, Runtime
 from agentcontain.operator import OperatorIncidentView
 from agentcontain.policy import Policy
@@ -55,3 +56,21 @@ def test_operator_view_does_not_mutate_evidence() -> None:
     view = OperatorIncidentView.from_evidence(envelope)
     assert view.to_dict()["evidence"] == envelope.to_dict()
     assert envelope.to_json() == before
+
+
+def test_operator_view_projects_external_evidence_references() -> None:
+    policy = Policy(policy_id="payments", version=7)
+    reference = ExternalEvidenceReference(
+        source="warden",
+        reference_id="warden-event-1",
+        digest="sha256:" + "b" * 64,
+        relation="observed_during",
+        captured_at="2026-09-27T00:00:00Z",
+    )
+    envelope = _envelope(policy).with_external_evidence(reference)
+
+    view = OperatorIncidentView.from_evidence(envelope)
+
+    assert view.external_evidence == (reference,)
+    assert view.to_dict()["external_evidence"] == [reference.to_dict()]
+    assert view.to_dict()["evidence"]["external_evidence"] == [reference.to_dict()]
