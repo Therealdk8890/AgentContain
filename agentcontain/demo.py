@@ -9,6 +9,7 @@ from typing import Any
 
 from .engine import admit, evidence_envelope
 from .evidence import EvidenceEnvelope, canonical_json
+from .operator import OperatorIncidentView
 from .policy import Policy
 
 _DEMO_KEY = b"agentcontain-demo-key-v1"
@@ -90,22 +91,34 @@ def run_demo() -> int:
     if not _verify_receipt(receipt, evidence):
         raise RuntimeError("demo receipt verification failed")
 
-    print("AgentContain — no-root proof demo")
-    print("----------------------------------")
-    print(f"Execution:  {admission.identity.execution_id}")
-    print(f"Policy:     {admission.identity.policy_id}")
-    print("Mode:       SIMULATED (no kernel enforcement)")
+    view = OperatorIncidentView.from_evidence(evidence)
+    incident = view.incident
+
+    print("AgentContain — reference incident experience")
+    print("--------------------------------------------")
+    print(f"Execution:     {admission.identity.execution_id}")
+    print(f"Agent:         {view.agent['agent_id']}")
+    print(f"Policy:        {view.policy['policy_id']}")
+    print(f"Policy digest: {view.policy['policy_digest']}")
+    print("Mode:          SIMULATED (no kernel enforcement)")
     print()
-    print("Lifecycle:")
-    for event in admission.machine.events.events:
+    print("Incident")
+    print(f"  Trigger:     {incident.trigger or 'none'}")
+    print(f"  Status:      {incident.status.value.upper()}")
+    print(f"  Proof:       {incident.proof_status.upper()}")
+    print()
+    print("Lifecycle / evidence")
+    for event in view.timeline:
         print(f"  {event.sequence}. {event.name}")
     print()
-    print("Evidence:           OBSERVED")
-    print("Verification:       VERIFIED")
-    print("Authenticated:      RECEIPT VERIFIED")
-    print("Receipt:            HMAC authenticated")
+    print("Proof")
+    print("  Evidence:    OBSERVED")
+    print("  Verification: VERIFIED")
+    print("  Receipt:     AUTHENTICATED")
+    print(f"  Receipt ID:  {view.receipt_id}")
     print()
     print("Verified ≠ claim is true")
-    print("This demo verifies platform procedure and receipt integrity;")
-    print("it does not prove real host containment.")
+    print("This reference experience demonstrates the platform procedure,")
+    print("operator projection, and receipt integrity.")
+    print("It does not prove real host or kernel containment.")
     return 0
