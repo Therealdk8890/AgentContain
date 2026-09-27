@@ -6,7 +6,10 @@ import json
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-SCHEMA_VERSION = "agentcontain.evidence/v1"
+from .external_evidence import ExternalEvidenceReference
+
+SCHEMA_VERSION = "agentcontain.evidence/v2"
+LEGACY_SCHEMA_VERSION = "agentcontain.evidence/v1"
 VALID_STATUSES = {"observed", "verified", "degraded", "tampered", "incomplete"}
 
 
@@ -27,10 +30,11 @@ class EvidenceEnvelope:
     receipt: Mapping[str, Any] | None = None
     governance: Mapping[str, Any] | None = None
     provenance: Mapping[str, Any] = None  # type: ignore[assignment]
+    external_evidence: tuple[ExternalEvidenceReference, ...] = ()
     schema_version: str = SCHEMA_VERSION
 
     def __post_init__(self) -> None:
-        if self.schema_version != SCHEMA_VERSION:
+        if self.schema_version not in {SCHEMA_VERSION, LEGACY_SCHEMA_VERSION}:
             raise ValueError(f"unsupported evidence schema: {self.schema_version}")
         for name in ("execution", "enforcement", "verification", "proof", "provenance"):
             value = getattr(self, name)
@@ -40,6 +44,14 @@ class EvidenceEnvelope:
             object.__setattr__(self, "events", tuple(self.events))
         if any(not isinstance(event, Mapping) for event in self.events):
             raise TypeError("events must contain mappings")
+        if not isinstance(self.external_evidence, tuple):
+            object.__setattr__(
+                self,
+                "external_evidence",
+                tuple(self.external_evidence),
+            )
+        if any(not isinstance(item, ExternalEvidenceReference) for item in self.external_evidence):
+            raise TypeError("external_evidence must contain ExternalEvidenceReference values")
         self.validate()
 
     @classmethod
@@ -54,6 +66,7 @@ class EvidenceEnvelope:
         receipt: Mapping[str, Any] | None = None,
         governance: Mapping[str, Any] | None = None,
         provenance: Mapping[str, Any] | None = None,
+        external_evidence: tuple[ExternalEvidenceReference, ...] = (),
     ) -> "EvidenceEnvelope":
         return cls(
             execution=dict(execution),
@@ -64,6 +77,27 @@ class EvidenceEnvelope:
             receipt=dict(receipt) if receipt is not None else None,
             governance=dict(governance) if governance is not None else None,
             provenance=dict(provenance or {"producer": "agentcontain"}),
+            external_evidence=tuple(external_evidence),
+        )
+
+    def with_external_evidence(
+        self,
+        reference: ExternalEvidenceReference,
+    ) -> "EvidenceEnvelope":
+        """Return a copy with one additional external evidence reference."""
+        if not isinstance(reference, ExternalEvidenceReference):
+            raise TypeError("reference must be an ExternalEvidenceReference")
+        return EvidenceEnvelope(
+            execution=self.execution,
+            events=self.events,
+            enforcement=self.enforcement,
+            verification=self.verification,
+            proof=self.proof,
+            receipt=self.receipt,
+            governance=self.governance,
+            provenance=self.provenance,
+            external_evidence=self.external_evidence + (reference,),
+            schema_version=SCHEMA_VERSION,
         )
 
     def with_receipt(self, receipt: Mapping[str, Any]) -> "EvidenceEnvelope":
@@ -99,8 +133,10 @@ class EvidenceEnvelope:
             verification=self.verification,
             proof=self.proof,
             receipt=dict(receipt),
+            governance=self.governance,
             provenance=self.provenance,
-            schema_version=self.schema_version,
+            external_evidence=self.external_evidence,
+            schema_version=SCHEMA_VERSION,
         )
 
     def validate(self) -> None:
@@ -141,6 +177,7 @@ class EvidenceEnvelope:
             "receipt": dict(self.receipt) if self.receipt is not None else None,
             "governance": dict(self.governance) if self.governance is not None else None,
             "provenance": dict(self.provenance),
+            "external_evidence": [item.to_dict() for item in self.external_evidence],
         }
 
     def to_json(self) -> str:
@@ -150,7 +187,8 @@ class EvidenceEnvelope:
     def from_dict(cls, document: Mapping[str, Any]) -> "EvidenceEnvelope":
         if not isinstance(document, Mapping):
             raise TypeError("evidence envelope must be a mapping")
-        expected = {
+
+        base_expected = {
             "schema_version",
             "execution",
             "events",
@@ -161,8 +199,24 @@ class EvidenceEnvelope:
             "governance",
             "provenance",
         }
-        if set(document) != expected:
+        expected_v2 = base_expected | {"external_evidence"}
+        keys = set(document)
+        if keys == base_expected:
+            if document["schema_version"] != LEGACY_SCHEMA_VERSION:
+                raise ValueError("evidence envelope has an invalid shape")
+            external_evidence: tuple[ExternalEvidenceReference, ...] = ()
+        elif keys == expected_v2:
+            if document["schema_version"] != SCHEMA_VERSION:
+                raise ValueError("evidence envelope has an invalid shape")
+            raw_refs = document["external_evidence"]
+            if not isinstance(raw_refs, list):
+                raise TypeError("external_evidence must be a list")
+            external_evidence = tuple(
+                ExternalEvidenceReference.from_dict(item) for item in raw_refs
+            )
+        else:
             raise ValueError("evidence envelope has an invalid shape")
+
         if not isinstance(document["events"], list):
             raise TypeError("events must be a list")
         return cls(
@@ -174,6 +228,7 @@ class EvidenceEnvelope:
             receipt=dict(document["receipt"]) if document["receipt"] is not None else None,
             governance=dict(document["governance"]) if document["governance"] is not None else None,
             provenance=dict(document["provenance"]),
+            external_evidence=external_evidence,
             schema_version=document["schema_version"],
         )
 
