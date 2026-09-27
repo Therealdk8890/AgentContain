@@ -7,6 +7,7 @@ events, and transport-neutral evidence around the AgentContainment engine.
 from .engine import Admission, admit, build_agentcontainment_engine, containment_receipt, evidence_envelope
 from .events import Event, EventLog
 from .evidence import EvidenceEnvelope, canonical_json
+from .external_evidence import ExternalEvidenceReference
 from .fleet import Agent, FleetRegistry, FleetScope, Organization, Project, Runtime
 from .fleet_status import FleetPolicyStatus, fleet_policy_status
 from .fleet_status_history import FleetPolicyStatusHistory, FleetPolicyStatusSnapshot
@@ -33,6 +34,7 @@ __all__ = [
     "EvidenceStore",
     "InMemoryEvidenceStore",
     "EvidenceEnvelope",
+    "ExternalEvidenceReference",
     "Agent",
     "FleetRegistry",
     "FleetScope",

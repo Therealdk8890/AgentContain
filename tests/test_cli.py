@@ -65,7 +65,7 @@ def test_cli_writes_portable_evidence_file(monkeypatch, tmp_path, capsys) -> Non
     ]) == 0
 
     document = json.loads(output.read_text(encoding="utf-8"))
-    assert document["schema_version"] == "agentcontain.evidence/v1"
+    assert document["schema_version"] == "agentcontain.evidence/v2"
     assert document["execution"]["agent_id"] == "agent-1"
     assert document["execution"]["policy_id"] == "production"
     assert document["verification"]["status"] == "observed"
