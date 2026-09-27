@@ -27,7 +27,8 @@ class FakeReceipt:
 
 class FakeEngine:
     def contain(self):
-        return FakeReport()
+        self.last_report = FakeReport()
+        return self.last_report
 
 
 def test_cli_json_run(monkeypatch, capsys) -> None:
