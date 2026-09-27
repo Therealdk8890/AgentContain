@@ -64,7 +64,7 @@ class PlatformStateMachine:
         return self.transition(LifecycleState.CONTAINED, event_name="containment_verified")
 
     def detect(self, details: dict[str, str] | None = None) -> Event:
-        return self.transition(LifecycleState.DETECTED, event_name="verification_completed", details=details)
+        return self.transition(LifecycleState.DETECTED, event_name="anomaly_detected", details=details)
 
     def fence(self) -> Event:
         return self.transition(LifecycleState.FENCED, event_name="fence_requested")
