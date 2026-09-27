@@ -24,6 +24,7 @@ def _policy_from_args(args: argparse.Namespace) -> Policy:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="agentcontain", description="Runtime enforcement and proof platform for autonomous AI agents.")
     sub = parser.add_subparsers(dest="command", required=True)
+    demo = sub.add_parser("demo", help="run the no-root proof semantics demo")
     run = sub.add_parser("run", help="admit an execution and optionally contain it")
     run.add_argument("--policy", required=True, help="policy identifier")
     run.add_argument("--agent-id", default="agent", help="agent identity")
@@ -39,6 +40,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "demo":
+        from .demo import run_demo
+        return run_demo()
     if args.command == "run":
         policy = _policy_from_args(args)
         try:
