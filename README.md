@@ -235,7 +235,7 @@ A successful run is evidence from that tested Linux environment. It does not est
 
 ## Evidence model
 
-AgentContain exposes a transport-neutral `EvidenceEnvelope` for machine-readable execution evidence. The v1 envelope binds execution identity, ordered events, enforcement state, verification state, proof data, optional governance scope, provenance, and an optional authenticated receipt into one canonical representation.
+AgentContain exposes a transport-neutral `EvidenceEnvelope` for machine-readable execution evidence. The current v2 envelope binds execution identity, ordered events, enforcement state, verification state, proof data, optional governance scope, provenance, and an optional authenticated receipt into one canonical representation.
 
 The envelope validates execution identity, contiguous event sequencing, supported verification states, and receipt identity binding where present. It can be serialized to deterministic JSON for storage or transport and reconstructed offline.
 
