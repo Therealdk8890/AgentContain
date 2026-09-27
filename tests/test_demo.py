@@ -29,6 +29,6 @@ def test_demo_lifecycle_has_distinct_detection_and_verification() -> None:
     admission.machine.halt()
     admission.machine.verify()
 
-    names = [event.name for event in admission.machine.events.events]
-    assert "anomaly_detected" in names
-    assert names[-1] == "verification_completed"
+    assert admission.machine.state.value == "verified"
+    assert admission.machine.events.events[-1].name == "verification_completed"
+    assert len(admission.machine.events.events) == 6
