@@ -12,6 +12,18 @@ class FakeReport:
     stages = ("runtime_fenced", "enforcer:cgroup:verified")
     enforcement_latency_seconds = 0.25
 
+    def to_receipt(self, secret, *, execution_id, policy_id):
+        return FakeReceipt(execution_id, policy_id, secret)
+
+
+class FakeReceipt:
+    def __init__(self, execution_id, policy_id, secret):
+        self.payload = {"agent_id": execution_id, "policy_id": policy_id}
+        self.signature = secret.hex()
+
+    def to_dict(self):
+        return {"payload": self.payload, "signature": self.signature}
+
 
 class FakeEngine:
     def contain(self):
