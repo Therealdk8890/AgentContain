@@ -13,12 +13,31 @@ from .policy_distribution import PolicyBundle, PolicyRegistry
 from .state import PlatformStateMachine
 
 
+class ContainmentResult(Protocol):
+    """Minimum result contract needed by the platform."""
+
+    complete: bool
+
+
+class ReceiptCapableResult(ContainmentResult, Protocol):
+    """Containment result that can produce an authenticated receipt."""
+
+    def to_receipt(
+        self,
+        secret: bytes,
+        *,
+        execution_id: str,
+        policy_id: str,
+    ): ...
+
+
 class EnforcementEngine(Protocol):
-    """Minimal enforcement contract consumed by the platform."""
+    """Contract consumed by the platform adapter."""
 
-    def contain(self): ...
+    last_report: ReceiptCapableResult | None
 
-    def receipt(self, secret: bytes, *, execution_id: str, policy_id: str): ...
+    def contain(self) -> ContainmentResult: ...
+
 
 
 @dataclass
