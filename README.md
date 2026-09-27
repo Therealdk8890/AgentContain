@@ -22,6 +22,38 @@ For enterprise security and governance teams, this translates into:
 
 AgentContain can support security review and compliance evidence workflows, but it does not by itself make an organization compliant with SOC 2, HIPAA, or any other regulatory framework.
 
+## Proof semantics
+
+AgentContain deliberately separates three different claims about an execution:
+
+| State | What it means |
+|---|---|
+| **Observed** | An event or result was recorded. |
+| **Verified** | The defined verification procedure and its required evidence checks succeeded. |
+| **Authenticated receipt** | The resulting evidence was bound to a tamper-evident, HMAC-authenticated receipt. |
+
+**Verified ≠ claim is true.**
+
+Verification establishes that the specified procedure and evidence checks succeeded. It does not establish the truth of an arbitrary external claim, and an authenticated receipt is not a non-repudiable host attestation.
+
+The lifecycle also distinguishes **detection** from **verification**: detection records an anomaly; verification records completion of the defined verification procedure. They are separate evidence events.
+
+## Current quick start
+
+The platform CLI is available as `agentcontain`. The current runtime path uses the pinned AgentContainment engine, so a source checkout must include the submodule and its Python package:
+
+```bash
+git clone --recurse-submodules https://github.com/Therealdk8890/AgentContain.git
+cd AgentContain
+python -m pip install ./AgentContainment
+python -m pip install .
+agentcontain run --policy demo --agent-id demo-agent --contain
+```
+
+This exercises the real runtime adapter and may require a Linux environment with the privileges and cgroup setup required by the selected enforcement path. It is not the no-root demonstration path.
+
+A dedicated **no-root demo path** is planned to demonstrate the platform lifecycle, evidence envelope, and receipt verification without requiring host enforcement privileges. It will be explicitly labeled as simulated containment rather than presented as kernel-level proof.
+
 ## Architecture
 
 ```
@@ -92,7 +124,7 @@ The project intentionally distinguishes:
 
 ## Fleet governance
 
-AgentContain now includes local governance primitives for managing fleets above the enforcement engine. These primitives are deliberately separate from runtime authority: governance can describe desired state, rollout progress, and fleet status without weakening or replacing local enforcement.
+AgentContain includes local governance primitives for managing fleets above the enforcement engine. These primitives are deliberately separate from runtime authority: governance can describe desired state, rollout progress, and fleet status without weakening or replacing local enforcement.
 
 Current platform primitives include:
 
@@ -105,11 +137,13 @@ Current platform primitives include:
 
 The design intentionally keeps rollout and fleet observation from becoming enforcement authority. Local runtimes remain authoritative for accepting and enforcing policy.
 
+The open package provides these as **local governance primitives**. They do not constitute a hosted multi-tenant control plane, server-side RBAC system, or centralized enforcement authority.
+
 ## Enterprise & support
 
 AgentContain is being developed with a clear separation between the open runtime/governance foundation and future centralized enterprise capabilities.
 
-The open platform already provides local fleet governance, runtime enforcement, verification, and evidence primitives. Future centralized capabilities can build above that foundation for organizations that need coordinated governance across many agents and runtimes, including areas such as:
+The open platform provides local fleet governance, runtime enforcement, verification, and evidence primitives. Future centralized capabilities can build above that foundation for organizations that need coordinated governance across many agents and runtimes, including areas such as:
 
 - Centralized policy distribution and fleet orchestration.
 - Durable evidence storage and long-term audit history.
