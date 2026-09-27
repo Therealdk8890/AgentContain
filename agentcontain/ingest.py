@@ -1,37 +1,36 @@
 """Transport-neutral ingestion boundary for AgentContain evidence."""
 
 from __future__ import annotations
+
 from typing import Protocol
+
 from .evidence import EvidenceEnvelope
+from .store import InMemoryEvidenceStore
+
 
 class EvidenceSink(Protocol):
     """Minimal downstream boundary for accepted evidence."""
+
     def submit(self, envelope: EvidenceEnvelope) -> EvidenceEnvelope:
         """Accept evidence and return the accepted original."""
 
+
 class InMemoryEvidenceSink:
-    """Reference sink for local use and tests."""
+    """Reference sink for local use and tests.
+
+    Storage semantics are delegated to the reference evidence store so the
+    sink and store cannot drift on validation, idempotency, or collision
+    handling. The sink intentionally exposes only its ingestion-facing API.
+    """
+
     def __init__(self) -> None:
-        self._items: dict[str, EvidenceEnvelope] = {}
-        self._anonymous: list[EvidenceEnvelope] = []
+        self._store = InMemoryEvidenceStore()
 
     def submit(self, envelope: EvidenceEnvelope) -> EvidenceEnvelope:
-        if not isinstance(envelope, EvidenceEnvelope):
-            raise TypeError("envelope must be an EvidenceEnvelope")
-        receipt_id = envelope.receipt_id
-        if receipt_id is None:
-            self._anonymous.append(envelope)
-            return envelope
-        existing = self._items.get(receipt_id)
-        if existing is None:
-            self._items[receipt_id] = envelope
-            return envelope
-        if existing.to_json() != envelope.to_json():
-            raise ValueError(f"evidence receipt_id collision: {receipt_id}")
-        return existing
+        return self._store.put(envelope)
 
     def get(self, receipt_id: str) -> EvidenceEnvelope | None:
-        return self._items.get(receipt_id)
+        return self._store.get(receipt_id)
 
     def all(self) -> tuple[EvidenceEnvelope, ...]:
-        return tuple(self._items.values()) + tuple(self._anonymous)
+        return self._store.all()
