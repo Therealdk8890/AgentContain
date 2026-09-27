@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
 
             receipt_secret = None
             if args.receipt_secret_file:
-                receipt_secret = Path(args.receipt_secret_file).read_text(encoding="utf-8").rstrip("\\r\\n").encode("utf-8")
+                receipt_secret = Path(args.receipt_secret_file).read_text(encoding="utf-8").rstrip("\r\n").encode("utf-8")
             elif args.receipt_secret_env:
                 configured_secret = os.environ.get(args.receipt_secret_env)
                 if configured_secret:
