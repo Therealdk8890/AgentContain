@@ -67,3 +67,39 @@ def test_cli_returns_nonzero_when_engine_cannot_be_loaded(monkeypatch, capsys) -
 
     assert cli.main(["run", "--policy", "production"]) == 1
     assert "engine unavailable" in capsys.readouterr().err
+
+
+def test_cli_reads_receipt_secret_from_environment(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(cli, "build_agentcontainment_engine", lambda agent_id, **kwargs: FakeEngine())
+    monkeypatch.setenv("AGENTCONTAIN_RECEIPT_SECRET", "test-secret")
+
+    assert cli.main([
+        "run",
+        "--policy", "production",
+        "--agent-id", "agent-1",
+        "--contain",
+        "--json",
+    ]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["receipt"]["payload"]["agent_id"] == "agent-1"
+    assert payload["receipt"]["signature"]
+
+
+def test_cli_reads_receipt_secret_from_file(monkeypatch, tmp_path, capsys) -> None:
+    monkeypatch.setattr(cli, "build_agentcontainment_engine", lambda agent_id, **kwargs: FakeEngine())
+    secret = tmp_path / "receipt.secret"
+    secret.write_text("test-secret\\n", encoding="utf-8")
+
+    assert cli.main([
+        "run",
+        "--policy", "production",
+        "--agent-id", "agent-1",
+        "--contain",
+        "--receipt-secret-file", str(secret),
+        "--json",
+    ]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["receipt"]["payload"]["agent_id"] == "agent-1"
+    assert payload["receipt"]["signature"]
