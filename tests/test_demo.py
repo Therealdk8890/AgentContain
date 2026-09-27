@@ -1,0 +1,34 @@
+from agentcontain import cli
+
+
+def test_cli_demo_is_no_root_and_verifies_receipt(capsys) -> None:
+    assert cli.main(["demo"]) == 0
+
+    output = capsys.readouterr().out
+    assert "SIMULATED (no kernel enforcement)" in output
+    assert "Evidence:           OBSERVED" in output
+    assert "Verification:       VERIFIED" in output
+    assert "Authenticated:      RECEIPT VERIFIED" in output
+    assert "Verified ≠ claim is true" in output
+
+
+def test_demo_lifecycle_has_distinct_detection_and_verification() -> None:
+    from agentcontain.demo import SimulatedEngine
+    from agentcontain.engine import admit
+    from agentcontain.policy import Policy
+
+    admission = admit(
+        Policy("demo", capabilities=("simulated-containment",)),
+        agent_id="demo-agent",
+        engine=SimulatedEngine(),
+    )
+    admission.engine.contain()
+    admission.machine.contain()
+    admission.machine.detect({"reason": "demo_policy_violation"})
+    admission.machine.fence()
+    admission.machine.halt()
+    admission.machine.verify()
+
+    names = [event.name for event in admission.machine.events.events]
+    assert "anomaly_detected" in names
+    assert names[-1] == "verification_completed"
