@@ -11,8 +11,9 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from .evidence import EvidenceEnvelope
+from .external_evidence import ExternalEvidenceReference
 from .fleet import FleetRegistry
-from .incident import IncidentStatus, IncidentSummary
+from .incident import IncidentSummary
 from .identity import ExecutionIdentity
 from .policy_assignment import PolicyAssignmentRegistry
 
@@ -41,16 +42,18 @@ class EvidenceTimelineEvent:
 class OperatorIncidentView:
     """Operator-facing Agent → Policy → Incident → Evidence view.
 
-    The view is deliberately read-only. AgentContainment and the platform
-    lifecycle remain authoritative for runtime decisions.
+    External evidence is projected as typed references only. The view is
+    deliberately read-only; AgentContainment and the platform lifecycle remain
+    authoritative for runtime decisions.
     """
 
-    incident: IncidentSummary
+    incident: object
     agent: Mapping[str, str]
     governance: Mapping[str, str] | None
     policy: Mapping[str, object]
     evidence: EvidenceEnvelope
     timeline: tuple[EvidenceTimelineEvent, ...]
+    external_evidence: tuple[ExternalEvidenceReference, ...]
     receipt_id: str | None
 
     @classmethod
@@ -75,6 +78,8 @@ class OperatorIncidentView:
             for event in envelope.events
         )
         proof_status = str(envelope.verification.get("status", "observed"))
+        from .incident import IncidentSummary
+
         incident = IncidentSummary.from_execution(
             identity, events, proof_status=proof_status
         )
@@ -135,6 +140,7 @@ class OperatorIncidentView:
             policy=policy,
             evidence=envelope,
             timeline=timeline,
+            external_evidence=envelope.external_evidence,
             receipt_id=envelope.receipt_id,
         )
 
@@ -146,6 +152,9 @@ class OperatorIncidentView:
             "incident": self.incident.to_dict(),
             "evidence": self.evidence.to_dict(),
             "timeline": [event.to_dict() for event in self.timeline],
+            "external_evidence": [
+                reference.to_dict() for reference in self.external_evidence
+            ],
             "receipt_id": self.receipt_id,
         }
 
