@@ -1,0 +1,37 @@
+{
+  "schema_version": "agentcontain.external-evidence/v1",
+  "references": [
+    {
+      "schema_version": "agentcontain.external-evidence/v1",
+      "source": "warden",
+      "reference_id": "warden:obs:fixture-0001",
+      "digest": "sha256:a9ffb79a34731f08222d5599f0a34a66849aec4ef3d215297eddb0f27978c7e4",
+      "relation": "observed_during",
+      "captured_at": "2026-09-27T00:00:00Z"
+    },
+    {
+      "schema_version": "agentcontain.external-evidence/v1",
+      "source": "agentcontainment",
+      "reference_id": "containment:incident-1:epoch-1",
+      "digest": "sha256:aef2b5ffe0654b9bf28ed9612b66a7cc4c0f6c8bae838fdb8c2ae37311ac03c4",
+      "relation": "derived_from",
+      "captured_at": "2026-09-27T00:00:01Z"
+    },
+    {
+      "schema_version": "agentcontain.external-evidence/v1",
+      "source": "dprovenancekit",
+      "reference_id": "vr-claim-path-v1-11111111-2222-4333-8444-555555555555",
+      "digest": "sha256:cf445ff3f636eab19f89905679599ad4bd3cc9b1fe43dd5f739ff71a96b0c392",
+      "relation": "attests",
+      "captured_at": "2026-09-27T00:00:02Z"
+    },
+    {
+      "schema_version": "agentcontain.external-evidence/v1",
+      "source": "claimproofkit",
+      "reference_id": "report-123",
+      "digest": "sha256:f5287f7f40e9fa7660da44b24182455a261f1f6ae0c27982bddb64cc5902836a",
+      "relation": "verifies",
+      "captured_at": "2026-09-27T00:00:03Z"
+    }
+  ]
+}
