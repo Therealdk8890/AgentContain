@@ -113,3 +113,14 @@ def test_receipt_binding_does_not_verify_or_rewrite_cryptography() -> None:
     bound = _envelope().with_receipt(receipt)
     assert bound.receipt["digest"] == "digest-1"
     assert bound.receipt["signature"] == "signature-1"
+
+
+def test_evidence_parses_legacy_v1_without_external_evidence() -> None:
+    document = _envelope().to_dict()
+    document.pop("external_evidence")
+    document["schema_version"] = "agentcontain.evidence/v1"
+
+    restored = EvidenceEnvelope.from_dict(document)
+
+    assert restored.schema_version == "agentcontain.evidence/v1"
+    assert restored.external_evidence == ()
