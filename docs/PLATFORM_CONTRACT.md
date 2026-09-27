@@ -1,6 +1,6 @@
 # AgentContain Platform Contract
 
-**Status: v0.1 design contract**
+**Status:** v0.1 design contract
 
 This document defines the trust boundary and evidence semantics for the AgentContain platform.
 
@@ -58,6 +58,7 @@ The initial event vocabulary is:
 - `admission_verified`
 - `containment_requested`
 - `containment_verified`
+- `anomaly_detected`
 - `fence_requested`
 - `halt_requested`
 - `verification_completed`
@@ -67,6 +68,8 @@ The initial event vocabulary is:
 - `runtime_recovery_failed`
 - `recontainment_verified`
 - `receipt_issued`
+
+Detection and verification are intentionally distinct evidence events: `anomaly_detected` records that a detection condition was observed, while `verification_completed` records completion of a verification procedure.
 
 Events are evidence records, not authority by themselves. The implementation must define which external operation establishes each event.
 
