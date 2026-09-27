@@ -56,9 +56,9 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 incident = view.incident
                 print(f"Incident {incident.incident_id}")
-                print(f"  Agent:        {view.agent.get("agent_id", "unknown")}")
-                print(f"  Policy:       {view.policy.get("policy_id", "unknown")}")
-                print(f"  Event:        {incident.trigger or "none"}")
+                print(f"  Agent:        {view.agent.get('agent_id', 'unknown')}")
+                print(f"  Policy:       {view.policy.get('policy_id', 'unknown')}")
+                print(f"  Event:        {incident.trigger or 'none'}")
                 print(f"  Status:       {incident.status.value.upper()}")
                 print(f"  Proof:        {incident.proof_status}")
                 if view.receipt_id:
