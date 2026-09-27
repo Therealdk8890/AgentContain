@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -31,7 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--capability", action="append", default=[], help="declared capability")
     run.add_argument("--egress", action="append", default=[], help="allowed egress target")
     run.add_argument("--cgroup-path", help="existing Linux cgroup-v2 path for this workload")
-    run.add_argument("--receipt-secret", help="HMAC secret used only to authenticate the local evidence receipt")
+    run.add_argument("--receipt-secret-file", help="read the HMAC receipt secret from a file instead of exposing it in argv")
+    run.add_argument("--receipt-secret-env", default="AGENTCONTAIN_RECEIPT_SECRET", help="environment variable containing the HMAC receipt secret")
     run.add_argument("--evidence-output", help="write the complete evidence envelope to this JSON file")
     run.add_argument("--contain", action="store_true", help="invoke external containment immediately after admission")
     run.add_argument("--json", action="store_true", help="emit machine-readable execution state")
@@ -50,9 +52,17 @@ def main(argv: list[str] | None = None) -> int:
             admission = admit(policy, agent_id=args.agent_id, engine=engine)
             report = contain(admission) if args.contain else None
 
+            receipt_secret = None
+            if args.receipt_secret_file:
+                receipt_secret = Path(args.receipt_secret_file).read_text(encoding="utf-8").rstrip("\\r\\n").encode("utf-8")
+            elif args.receipt_secret_env:
+                configured_secret = os.environ.get(args.receipt_secret_env)
+                if configured_secret:
+                    receipt_secret = configured_secret.encode("utf-8")
+
             receipt = (
-                containment_receipt(admission, args.receipt_secret.encode("utf-8"))
-                if args.receipt_secret is not None and report is not None
+                containment_receipt(admission, receipt_secret)
+                if receipt_secret is not None and report is not None
                 else None
             )
             envelope = evidence_envelope(admission)
