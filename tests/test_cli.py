@@ -16,6 +16,34 @@ class FakeReport:
         return FakeReceipt(execution_id, policy_id, secret)
 
 
+class FakeReceipt:
+    def __init__(self, execution_id, policy_id, secret):
+        self.payload = {"agent_id": execution_id, "policy_id": policy_id}
+        self.signature = secret.hex()
+
+    def to_dict(self):
+        return {"payload": self.payload, "signature": self.signature}
+
+
+class FakeEngine:
+    def contain(self):
+        self.last_report = FakeReport()
+        return self.last_report
+
+
+class FakeReport:
+    complete = True
+    certified = True
+    durable = True
+    external_verified = True
+    failures = ()
+    stages = ("runtime_fenced", "enforcer:cgroup:verified")
+    enforcement_latency_seconds = 0.25
+
+    def to_receipt(self, secret, *, execution_id, policy_id):
+        return FakeReceipt(execution_id, policy_id, secret)
+
+
 def test_cli_json_run(monkeypatch, capsys) -> None:
     monkeypatch.setattr(cli, "build_agentcontainment_engine", lambda agent_id, **kwargs: FakeEngine())
 
