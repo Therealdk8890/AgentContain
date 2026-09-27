@@ -47,7 +47,7 @@ class OperatorIncidentView:
     authoritative for runtime decisions.
     """
 
-    incident: object
+    incident: IncidentSummary
     agent: Mapping[str, str]
     governance: Mapping[str, str] | None
     policy: Mapping[str, object]
@@ -78,8 +78,6 @@ class OperatorIncidentView:
             for event in envelope.events
         )
         proof_status = str(envelope.verification.get("status", "observed"))
-        from .incident import IncidentSummary
-
         incident = IncidentSummary.from_execution(
             identity, events, proof_status=proof_status
         )
