@@ -11,6 +11,8 @@ from .fleet import Agent, FleetRegistry, FleetScope, Organization, Project, Runt
 from .fleet_status import FleetPolicyStatus, fleet_policy_status
 from .fleet_status_history import FleetPolicyStatusHistory, FleetPolicyStatusSnapshot
 from .identity import ExecutionIdentity
+from .incident import IncidentStatus, IncidentSummary
+from .operator import EvidenceTimelineEvent, OperatorIncidentView
 from .policy import Policy
 from .policy_assignment import AssignmentState, PolicyAssignment, PolicyAssignmentRegistry
 from .policy_reconciliation import (
@@ -42,6 +44,10 @@ __all__ = [
     "FleetPolicyStatusHistory",
     "FleetPolicyStatusSnapshot",
     "ExecutionIdentity",
+    "IncidentStatus",
+    "IncidentSummary",
+    "EvidenceTimelineEvent",
+    "OperatorIncidentView",
     "LifecycleState",
     "PlatformStateMachine",
     "Policy",
