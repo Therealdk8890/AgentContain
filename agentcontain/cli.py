@@ -25,6 +25,9 @@ def _policy_from_args(args: argparse.Namespace) -> Policy:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="agentcontain", description="Runtime enforcement and proof platform for autonomous AI agents.")
     sub = parser.add_subparsers(dest="command", required=True)
+    inspect = sub.add_parser("inspect", help="inspect an evidence envelope as an operator incident")
+    inspect.add_argument("--evidence-file", required=True, help="JSON evidence envelope produced by AgentContain")
+    inspect.add_argument("--json", action="store_true", help="emit the complete operator view as JSON")
     demo = sub.add_parser("demo", help="run the no-root proof semantics demo")
     run = sub.add_parser("run", help="admit an execution and optionally contain it")
     run.add_argument("--policy", required=True, help="policy identifier")
@@ -42,6 +45,31 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "inspect":
+        try:
+            from .evidence import EvidenceEnvelope
+            from .operator import OperatorIncidentView
+            envelope = EvidenceEnvelope.from_json(Path(args.evidence_file).read_text(encoding="utf-8"))
+            view = OperatorIncidentView.from_evidence(envelope)
+            if args.json:
+                print(json.dumps(view.to_dict(), sort_keys=True, indent=2))
+            else:
+                incident = view.incident
+                print(f"Incident {incident.incident_id}")
+                print(f"  Agent:        {view.agent.get("agent_id", "unknown")}")
+                print(f"  Policy:       {view.policy.get("policy_id", "unknown")}")
+                print(f"  Event:        {incident.trigger or "none"}")
+                print(f"  Status:       {incident.status.value.upper()}")
+                print(f"  Proof:        {incident.proof_status}")
+                if view.receipt_id:
+                    print(f"  Receipt:      {view.receipt_id}")
+                print("  Timeline:")
+                for event in view.timeline:
+                    print(f"    {event.sequence}. {event.name}")
+            return 0
+        except Exception as exc:
+            print(f"agentcontain: {exc}", file=sys.stderr)
+            return 1
     if args.command == "demo":
         from .demo import run_demo
         return run_demo()
