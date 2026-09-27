@@ -42,21 +42,67 @@ Verification establishes that the specified procedure and evidence checks succee
 
 The lifecycle also distinguishes **detection** from **verification**: detection records an anomaly; verification records completion of the defined verification procedure. They are separate evidence events.
 
-## Current quick start
+## Quick start
 
-The platform CLI is available as `agentcontain`. The current runtime path uses the pinned AgentContainment engine, so a source checkout must include the submodule and its Python package:
+**Choose the path that matches your environment.**
+
+### macOS, development machines, and no-root exploration
+
+The CLI can be installed and exercised locally, but macOS is **not** the environment used for AgentContain's Linux cgroup/eBPF containment proof.
+
+For a local checkout:
 
 ```bash
 git clone --recurse-submodules https://github.com/Therealdk8890/AgentContain.git
 cd AgentContain
-python -m pip install ./AgentContainment
-python -m pip install .
+python3 -m pip install ./AgentContainment
+python3 -m pip install .
+agentcontain --help
+```
+
+To exercise the no-root platform demonstration:
+
+```bash
+agentcontain demo
+```
+
+The demo shows the lifecycle, evidence envelope, and authenticated receipt semantics without host privileges. It is explicitly **simulated** and must not be interpreted as kernel-level containment proof.
+
+> **Platform note:** the commands above assume a normal development environment with Git and Python available. They are not intended for iOS/iPadOS application shells or other restricted sandboxes that do not provide Git, a conventional filesystem checkout, or package-installation support.
+
+### Linux, real runtime enforcement
+
+The real containment path uses the pinned AgentContainment engine and requires a Linux environment with the privileges and cgroup setup required by the selected enforcement path.
+
+After the same source checkout and package installation:
+
+```bash
 agentcontain run --policy demo --agent-id demo-agent --contain
 ```
 
-This exercises the real runtime adapter and may require a Linux environment with the privileges and cgroup setup required by the selected enforcement path. It is not the no-root demonstration path.
+For the privileged real-workload integration proof:
 
-A dedicated no-root demonstration is available with `agentcontain demo`. It demonstrates the lifecycle, evidence envelope, and receipt semantics without host privileges. It is explicitly **simulated** and must not be interpreted as kernel-level containment proof.
+```bash
+AGENT_CONTAIN_RUN_REAL_CGROUP=1 pytest -q tests/integration/test_real_cgroup_execution.py
+```
+
+A successful run is evidence from that tested Linux environment. It is not a universal host-security guarantee.
+
+### Inspect an evidence artifact
+
+The operator surface can inspect a previously generated evidence envelope without changing enforcement state:
+
+```bash
+agentcontain inspect --evidence-file ./evidence.json
+```
+
+For machine-readable integration:
+
+```bash
+agentcontain inspect --evidence-file ./evidence.json --json
+```
+
+This composes the existing read-only operator projection from the execution identity, policy/governance context, incident summary, evidence, timeline, and receipt. It does not create a second enforcement authority.
 
 ## Architecture
 
@@ -224,14 +270,9 @@ The platform includes a Linux integration proof that exercises the full local pa
 8. Bind the resulting containment evidence to an authenticated proof receipt.
 9. Verify that receipt with an offline verifier.
 
-The proof is deliberately environment-gated because it requires Linux cgroup v2 and appropriate host privileges/delegation:
-
-```bash
-AGENT_CONTAIN_RUN_REAL_CGROUP=1 pytest -q tests/integration/test_real_cgroup_execution.py
-```
+The proof is deliberately environment-gated because it requires Linux cgroup v2 and appropriate host privileges/delegation.
 
 A successful run is evidence from that tested Linux environment. It does not establish a universal host-security claim. The receipt is HMAC-authenticated and tamper-evident; it is not a non-repudiable attestation.
-
 
 ## Evidence model
 
@@ -239,6 +280,6 @@ AgentContain exposes a transport-neutral `EvidenceEnvelope` for machine-readable
 
 The envelope validates execution identity, contiguous event sequencing, supported verification states, and receipt identity binding where present. It can be serialized to deterministic JSON for storage or transport and reconstructed offline.
 
-Governance scope can be attached to execution evidence so downstream systems can associate an execution with its organization, project, runtime, and agent context without giving that governance layer authority over enforcement.
+Governance scope can be attached to execution evidence so downstream systems can associate an execution with their organization, project, runtime, and agent context without giving that governance layer authority over enforcement.
 
 **Evidence is evidence, not authority:** a valid envelope or receipt records and verifies the defined evidence procedure; it does not by itself prove an arbitrary external claim is true.
