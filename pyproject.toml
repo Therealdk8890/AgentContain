@@ -12,12 +12,14 @@ license = { text = "Apache-2.0" }
 authors = [{ name = "Daniel Kissel" }]
 keywords = ["ai-agents", "agent-security", "agent-containment", "ai-safety", "runtime-security", "policy-enforcement", "cgroups", "ebpf"]
 classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: Apache Software License", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3 :: Only"]
+urls = { Repository = "https://github.com/Therealdk8890/AgentContain", Issues = "https://github.com/Therealdk8890/AgentContain/issues" }
 
 [project.scripts]
 agentcontain = "agentcontain.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["agentcontain*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
