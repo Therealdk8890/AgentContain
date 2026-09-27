@@ -7,7 +7,6 @@ from typing import Protocol
 
 from .evidence import EvidenceEnvelope
 from .fleet import FleetRegistry
-from .fleet import FleetRegistry
 from .identity import ExecutionIdentity
 from .policy import Policy
 from .policy_distribution import PolicyBundle, PolicyRegistry
@@ -95,7 +94,6 @@ def evidence_envelope(admission: Admission, *, fleet: FleetRegistry | None = Non
         raise RuntimeError("admission policy_digest diverges from accepted policy")
 
     events = tuple(event.to_dict() for event in admission.machine.events.events)
-    governance = None if fleet is None else fleet.governance_for_agent(identity.agent_id)
     governance = None if fleet is None else fleet.governance_for_agent(identity.agent_id)
     return EvidenceEnvelope.from_execution(
         execution={
