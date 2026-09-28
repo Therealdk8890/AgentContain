@@ -79,6 +79,10 @@ class PlatformStateMachine:
         return self.transition(LifecycleState.RECOVERING, event_name="recovery_requested")
 
     def recovered(self) -> Event:
+        # AgentContainment recovery starts a fresh execution epoch. Advance
+        # the platform identity before emitting the completion event so all
+        # post-recovery evidence is bound to the new execution epoch.
+        self.identity = self.identity.advance_epoch()
         return self.transition(LifecycleState.RECOVERED, event_name="runtime_recovery_complete")
 
     def recontain(self) -> Event:
