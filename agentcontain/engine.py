@@ -145,6 +145,7 @@ def halt(admission: Admission):
 
 def verify(admission: Admission):
     """Record verification only when authoritative runtime proof is sufficient."""
+    identity = admission.identity
     report = getattr(admission.engine, "last_report", None)
     report_epoch = getattr(report, "epoch", None) if report is not None else None
     stale_runtime_report = (
@@ -210,6 +211,11 @@ def containment_receipt(admission: Admission, secret: bytes):
     report = getattr(admission.engine, "last_report", None)
     if report is None:
         raise RuntimeError("containment has not been executed")
+    report_epoch = getattr(report, "epoch", None)
+    if report_epoch is not None and report_epoch != admission.identity.epoch:
+        raise RuntimeError(
+            "containment report epoch does not match current execution epoch"
+        )
     return report.to_receipt(
         secret,
         execution_id=admission.identity.execution_id,
@@ -235,6 +241,16 @@ def evidence_envelope(admission: Admission, *, fleet: FleetRegistry | None = Non
     governance = None if fleet is None else fleet.governance_for_agent(identity.agent_id)
 
     report = getattr(admission.engine, "last_report", None)
+    report_epoch = getattr(report, "epoch", None) if report is not None else None
+    stale_runtime_report = (
+        report is not None
+        and report_epoch is not None
+        and report_epoch != identity.epoch
+    )
+    if stale_runtime_report:
+        # Runtime containment proof is scoped to the epoch in which it was
+        # produced. Do not project historical proof into the current epoch.
+        report = None
     if report is None:
         enforcement = {
             "complete": admission.machine.state.value in {
