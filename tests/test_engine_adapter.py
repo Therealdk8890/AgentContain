@@ -202,6 +202,22 @@ class LifecycleEngine(FakeEngine):
         self.recovered = False
         self.recontained = False
 
+    def contain(self):
+        self.calls += 1
+        self.last_report = type(
+            "LifecycleReport",
+            (),
+            {
+                "complete": True,
+                "certified": True,
+                "durable": True,
+                "external_verified": True,
+                "failures": (),
+                "persistence_failures": (),
+            },
+        )()
+        return self.last_report
+
     def halt(self):
         self.halted = True
 
