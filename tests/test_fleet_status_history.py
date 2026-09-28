@@ -8,6 +8,9 @@ from agentcontain.fleet_status_history import (
 def _status(converged: int, total: int = 3) -> FleetPolicyStatus:
     return FleetPolicyStatus(
         rollout_id="rollout-1",
+        policy_id="production",
+        policy_version=2,
+        policy_digest="digest-production-v2",
         total_targets=total,
         converged=converged,
         pending=total - converged,
@@ -72,6 +75,9 @@ def test_snapshot_is_machine_readable():
         "sequence": 7,
         "status": {
             "rollout_id": "rollout-1",
+            "policy_id": "production",
+            "policy_version": 2,
+            "policy_digest": "digest-production-v2",
             "total_targets": 3,
             "converged": 3,
             "pending": 0,

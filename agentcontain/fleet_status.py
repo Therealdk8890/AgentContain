@@ -18,6 +18,9 @@ class FleetPolicyStatus:
     """Machine-readable aggregate status for one policy rollout."""
 
     rollout_id: str
+    policy_id: str
+    policy_version: int
+    policy_digest: str
     total_targets: int
     converged: int
     pending: int
@@ -42,6 +45,9 @@ class FleetPolicyStatus:
 
         return cls(
             rollout_id=reconciliation.rollout_id,
+            policy_id=reconciliation.policy_id,
+            policy_version=reconciliation.policy_version,
+            policy_digest=reconciliation.policy_digest,
             total_targets=len(reconciliation.targets),
             converged=counts[TargetReconciliationState.CONVERGED],
             pending=counts[TargetReconciliationState.PENDING],
@@ -55,6 +61,9 @@ class FleetPolicyStatus:
         """Return a stable machine-readable representation."""
         return {
             "rollout_id": self.rollout_id,
+            "policy_id": self.policy_id,
+            "policy_version": self.policy_version,
+            "policy_digest": self.policy_digest,
             "total_targets": self.total_targets,
             "converged": self.converged,
             "pending": self.pending,

@@ -4,7 +4,19 @@ The platform layer defines policy, execution identity, lifecycle state, structur
 events, and transport-neutral evidence around the AgentContainment engine.
 """
 
-from .engine import Admission, admit, build_agentcontainment_engine, containment_receipt, evidence_envelope
+from .engine import (
+    Admission,
+    admit,
+    build_agentcontainment_engine,
+    containment_receipt,
+    detect,
+    evidence_envelope,
+    halt,
+    issue_recovery_authorization,
+    recover,
+    recontain,
+    verify,
+)
 from .events import Event, EventLog
 from .evidence import EvidenceEnvelope, canonical_json
 from .external_evidence import ExternalEvidenceReference
@@ -68,5 +80,11 @@ __all__ = [
     "build_agentcontainment_engine",
     "canonical_json",
     "containment_receipt",
+    "detect",
     "evidence_envelope",
+    "halt",
+    "issue_recovery_authorization",
+    "recover",
+    "recontain",
+    "verify",
 ]
