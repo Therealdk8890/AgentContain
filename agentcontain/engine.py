@@ -179,7 +179,8 @@ def recover(admission: Admission, authorization) -> int:
         if admission.machine.state.value == "recovering":
             admission.machine.recontain()
         raise
-    admission.machine.recovered()
+    admission.machine.recovered(epoch)
+    admission.identity = admission.machine.identity
     return epoch
 
 
