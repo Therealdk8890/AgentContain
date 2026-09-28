@@ -185,6 +185,30 @@ def test_evidence_projects_authoritative_runtime_proof():
     }
 
 
+def test_verify_rejects_stale_runtime_proof_after_recovery():
+    engine = RuntimeProofEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+    admission.machine.recover()
+    admission.machine.recovered(1)
+    admission.identity = admission.machine.identity
+
+    with pytest.raises(RuntimeError, match="runtime verification report is unavailable"):
+        verify(admission)
+
+
+def test_containment_receipt_rejects_stale_runtime_report_after_recovery():
+    engine = RuntimeProofEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+    admission.machine.recover()
+    admission.machine.recovered(1)
+    admission.identity = admission.machine.identity
+
+    with pytest.raises(RuntimeError, match="containment report epoch"):
+        containment_receipt(admission, b"secret")
+
+
 def test_evidence_does_not_project_stale_runtime_proof_after_recovery():
     engine = RuntimeProofEngine()
     admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
