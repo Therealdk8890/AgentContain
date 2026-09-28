@@ -151,12 +151,21 @@ class EvidenceEnvelope:
 
         execution_id = self.execution["execution_id"]
         execution_epoch = self.execution["epoch"]
+        if not isinstance(execution_epoch, int) or isinstance(execution_epoch, bool) or execution_epoch < 0:
+            raise ValueError("execution epoch must be a non-negative integer")
         sequences: list[int] = []
+        event_epochs: list[int] = []
         for event in self.events:
             if event.get("execution_id") != execution_id:
                 raise ValueError("event execution_id does not match envelope")
-            if "epoch" in event and event.get("epoch") != execution_epoch:
-                raise ValueError("event epoch does not match envelope execution")
+            event_epoch = event.get("epoch", 0)
+            if not isinstance(event_epoch, int) or isinstance(event_epoch, bool) or event_epoch < 0:
+                raise ValueError("event epoch must be a non-negative integer")
+            if event_epoch > execution_epoch:
+                raise ValueError("event epoch cannot exceed envelope execution epoch")
+            if event_epochs and event_epoch < event_epochs[-1]:
+                raise ValueError("event epoch must be monotonically nondecreasing")
+            event_epochs.append(event_epoch)
             sequence = event.get("sequence")
             if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 1:
                 raise ValueError("event sequence must be a positive integer")
