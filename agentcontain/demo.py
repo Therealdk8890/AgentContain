@@ -40,7 +40,7 @@ def _issue_receipt(evidence: EvidenceEnvelope) -> dict[str, Any]:
             "independently_verified": False,
             "mode": "simulated",
         },
-        "proof_status": "verified",
+        "proof_status": "observed",
     }
     digest = hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
     signature = hmac.new(_DEMO_KEY, digest.encode("ascii"), hashlib.sha256).hexdigest()
