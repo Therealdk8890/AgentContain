@@ -23,12 +23,20 @@ def test_platform_lifecycle_records_monotonic_events() -> None:
     machine.halt()
     machine.verify()
     machine.recover()
-    machine.recovered()
+    machine.recovered(1)
 
     assert machine.state == LifecycleState.RECOVERED
-    assert [e.sequence for e in machine.events.events] == list(range(1, 8))
-    assert machine.events.events[0].name == "admission_verified"
-    assert machine.events.events[-1].name == "runtime_recovery_complete"
+
+    archived = machine.event_history[0].events
+    assert [e.sequence for e in archived] == list(range(1, 7))
+    assert archived[0].name == "admission_verified"
+    assert archived[-1].name == "recovery_requested"
+    assert {e.epoch for e in archived} == {0}
+
+    live = machine.events.events
+    assert [e.sequence for e in live] == [1]
+    assert live[0].name == "runtime_recovery_complete"
+    assert live[0].epoch == 1
 
 
 def test_invalid_transition_is_rejected() -> None:

@@ -130,6 +130,30 @@ def contain(admission: Admission) -> object:
             "enforcement engine reported containment failures: "
             + "; ".join(getattr(report, "failures", ()))
         )
+
+    # AgentContainment advances its execution epoch when containment takes
+    # effect. When the authoritative report exposes that epoch, require the
+    # exact next platform epoch and adopt it before recording the lifecycle
+    # event. This keeps receipts, events, and runtime proof in one namespace.
+    report_epoch = getattr(report, "epoch", None)
+    if report_epoch is not None:
+        if isinstance(report_epoch, bool) or not isinstance(report_epoch, int):
+            raise TypeError("runtime containment epoch must be an integer")
+        expected_epoch = admission.identity.epoch + 1
+        if report_epoch != expected_epoch:
+            raise RuntimeError(
+                f"runtime containment epoch {report_epoch} does not match "
+                f"expected platform epoch {expected_epoch}"
+            )
+        # The epoch transition also closes the prior epoch's live event log.
+        # Keep that log auditable, but do not mix its epoch-0 events with the
+        # new epoch-1 evidence envelope.
+        admission.machine.event_history.append(admission.machine.events)
+        admission.machine.events = type(admission.machine.events)()
+        admission.machine._sequence = 0
+        admission.machine.identity = admission.machine.identity.advance_epoch()
+        admission.identity = admission.machine.identity
+
     admission.machine.contain()
     return report
 
@@ -145,7 +169,18 @@ def halt(admission: Admission):
 
 def verify(admission: Admission):
     """Record verification only when authoritative runtime proof is sufficient."""
+    identity = admission.identity
     report = getattr(admission.engine, "last_report", None)
+    report_epoch = getattr(report, "epoch", None) if report is not None else None
+    stale_runtime_report = (
+        report is not None
+        and report_epoch is not None
+        and report_epoch != identity.epoch
+    )
+    if stale_runtime_report:
+        # A runtime proof is epoch-scoped. Never project a containment report
+        # from a prior epoch into the current execution's verified envelope.
+        report = None
     if report is None:
         raise RuntimeError("runtime verification report is unavailable")
     if not bool(getattr(report, "complete", False)):
@@ -179,7 +214,8 @@ def recover(admission: Admission, authorization) -> int:
         if admission.machine.state.value == "recovering":
             admission.machine.recontain()
         raise
-    admission.machine.recovered()
+    admission.machine.recovered(epoch)
+    admission.identity = admission.machine.identity
     return epoch
 
 
@@ -199,6 +235,11 @@ def containment_receipt(admission: Admission, secret: bytes):
     report = getattr(admission.engine, "last_report", None)
     if report is None:
         raise RuntimeError("containment has not been executed")
+    report_epoch = getattr(report, "epoch", None)
+    if report_epoch is not None and report_epoch != admission.identity.epoch:
+        raise RuntimeError(
+            "containment report epoch does not match current execution epoch"
+        )
     return report.to_receipt(
         secret,
         execution_id=admission.identity.execution_id,
@@ -224,6 +265,16 @@ def evidence_envelope(admission: Admission, *, fleet: FleetRegistry | None = Non
     governance = None if fleet is None else fleet.governance_for_agent(identity.agent_id)
 
     report = getattr(admission.engine, "last_report", None)
+    report_epoch = getattr(report, "epoch", None) if report is not None else None
+    stale_runtime_report = (
+        report is not None
+        and report_epoch is not None
+        and report_epoch != identity.epoch
+    )
+    if stale_runtime_report:
+        # Runtime containment proof is scoped to the epoch in which it was
+        # produced. Do not project historical proof into the current epoch.
+        report = None
     if report is None:
         enforcement = {
             "complete": admission.machine.state.value in {
@@ -240,6 +291,8 @@ def evidence_envelope(admission: Admission, *, fleet: FleetRegistry | None = Non
             "status": "observed",
             "method": "agentcontain-platform-events",
         }
+        if stale_runtime_report:
+            verification["reason"] = "runtime-report-epoch-mismatch"
         proof = {}
     else:
         failures = tuple(getattr(report, "failures", ()))

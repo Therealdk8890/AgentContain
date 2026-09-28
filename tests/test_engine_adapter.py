@@ -140,6 +140,7 @@ def test_evidence_governance_requires_registered_agent():
 
 @dataclass(frozen=True)
 class RuntimeReport:
+    epoch: int = 1
     complete: bool = True
     external_verified: bool = True
     certified: bool = True
@@ -182,6 +183,49 @@ def test_evidence_projects_authoritative_runtime_proof():
         "host_enforcement_verified": True,
         "runtime_report": True,
     }
+
+
+def test_verify_rejects_stale_runtime_proof_after_recovery():
+    engine = RuntimeProofEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+    admission.machine.recover()
+    admission.machine.recovered(2)
+    admission.identity = admission.machine.identity
+
+    with pytest.raises(RuntimeError, match="runtime verification report is unavailable"):
+        verify(admission)
+
+
+def test_containment_receipt_rejects_stale_runtime_report_after_recovery():
+    engine = RuntimeProofEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+    admission.machine.recover()
+    admission.machine.recovered(2)
+    admission.identity = admission.machine.identity
+
+    with pytest.raises(RuntimeError, match="containment report epoch"):
+        containment_receipt(admission, b"secret")
+
+
+def test_evidence_does_not_project_stale_runtime_proof_after_recovery():
+    engine = RuntimeProofEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+    admission.machine.recover()
+    admission.machine.recovered(2)
+    admission.identity = admission.machine.identity
+
+    evidence = evidence_envelope(admission)
+
+    assert evidence.execution["epoch"] == 2
+    assert evidence.verification == {
+        "status": "observed",
+        "method": "agentcontain-platform-events",
+        "reason": "runtime-report-epoch-mismatch",
+    }
+    assert evidence.proof == {}
 
 
 def test_evidence_epoch_mismatch_is_rejected():
@@ -227,7 +271,7 @@ class LifecycleEngine(FakeEngine):
     def recover(self, authorization):
         assert authorization is not None
         self.recovered = True
-        return 2
+        return 1
 
     def recontain_enforcers(self):
         self.recontained = True
@@ -248,9 +292,11 @@ def test_platform_lifecycle_bridge_uses_runtime_authority():
     authorization = issue_recovery_authorization(admission)
     epoch = recover(admission, authorization)
 
-    assert epoch == 2
+    assert epoch == 1
     assert engine.recovered is True
     assert admission.machine.state.value == "recovered"
+    assert admission.identity.epoch == epoch
+    assert admission.identity == admission.machine.identity
 
 
 def test_platform_halt_delegates_to_runtime_authority():
@@ -290,3 +336,19 @@ def test_recontain_requires_runtime_verification():
 
     assert engine.recontained is True
     assert admission.machine.state.value == "contained"
+
+
+def test_recovery_rejects_runtime_epoch_divergence():
+    class DivergentRecoveryEngine(LifecycleEngine):
+        def recover(self, authorization):
+            return 2
+
+    engine = DivergentRecoveryEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+
+    with pytest.raises(RuntimeError, match="does not match expected platform epoch"):
+        recover(admission, issue_recovery_authorization(admission))
+
+    assert admission.machine.state.value == "recovering"
+    assert admission.identity.epoch == 0

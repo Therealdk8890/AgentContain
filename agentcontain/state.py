@@ -40,6 +40,7 @@ class PlatformStateMachine:
         self.identity = identity
         self.state = LifecycleState.NEW
         self.events = EventLog()
+        self.event_history: list[EventLog] = []
         self._sequence = 0
 
     def transition(self, target: LifecycleState, *, event_name: str, details: dict[str, str] | None = None) -> Event:
@@ -78,12 +79,24 @@ class PlatformStateMachine:
     def recover(self) -> Event:
         return self.transition(LifecycleState.RECOVERING, event_name="recovery_requested")
 
-    def recovered(self) -> Event:
-        # AgentContainment recovery starts a fresh execution epoch. Advance
-        # the platform identity before emitting the completion event so all
-        # post-recovery evidence is bound to the new execution epoch.
+    def recovered(self, runtime_epoch: int) -> Event:
+        """Record recovery only when the runtime-authoritative epoch advances exactly once."""
+        if isinstance(runtime_epoch, bool) or not isinstance(runtime_epoch, int):
+            raise TypeError("runtime recovery epoch must be an integer")
+        expected_epoch = self.identity.epoch + 1
+        if runtime_epoch != expected_epoch:
+            raise RuntimeError(
+                f"runtime recovery epoch {runtime_epoch} does not match "
+                f"expected platform epoch {expected_epoch}"
+            )
+        self.event_history.append(self.events)
         self.identity = self.identity.advance_epoch()
-        return self.transition(LifecycleState.RECOVERED, event_name="runtime_recovery_complete")
+        self.events = EventLog()
+        self._sequence = 0
+        return self.transition(
+            LifecycleState.RECOVERED,
+            event_name="runtime_recovery_complete",
+        )
 
     def recontain(self) -> Event:
         if self.state == LifecycleState.CONTAINED:
