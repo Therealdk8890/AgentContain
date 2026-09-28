@@ -39,7 +39,6 @@ class EnforcementEngine(Protocol):
     def contain(self) -> ContainmentResult: ...
 
 
-
 @dataclass
 class Admission:
     """Authoritative platform admission result."""
@@ -100,11 +99,12 @@ def containment_receipt(admission: Admission, secret: bytes):
 
 
 def evidence_envelope(admission: Admission, *, fleet: FleetRegistry | None = None) -> EvidenceEnvelope:
-    """Build evidence from the locally accepted policy and platform event log.
+    """Build evidence from the accepted policy, runtime report, and event log.
 
     Policy identity is taken from the admission's validated PolicyBundle, not
-    from caller-supplied evidence fields. This keeps distributed policy
-    metadata advisory while the local runtime remains authoritative.
+    from caller-supplied evidence fields. Runtime enforcement fields are
+    projected from the authoritative AgentContainment report when available;
+    the adapter never manufactures host-proof claims.
     """
     identity = admission.identity
     if identity.policy_id != admission.policy.policy_id:
@@ -114,16 +114,10 @@ def evidence_envelope(admission: Admission, *, fleet: FleetRegistry | None = Non
 
     events = tuple(event.to_dict() for event in admission.machine.events.events)
     governance = None if fleet is None else fleet.governance_for_agent(identity.agent_id)
-    return EvidenceEnvelope.from_execution(
-        execution={
-            "execution_id": identity.execution_id,
-            "agent_id": identity.agent_id,
-            "policy_id": admission.policy.policy_id,
-            "policy_digest": admission.policy.policy_digest,
-            "epoch": identity.epoch,
-        },
-        events=events,
-        enforcement={
+
+    report = getattr(admission.engine, "last_report", None)
+    if report is None:
+        enforcement = {
             "complete": admission.machine.state.value in {
                 "contained",
                 "detected",
@@ -133,12 +127,59 @@ def evidence_envelope(admission: Admission, *, fleet: FleetRegistry | None = Non
                 "recovering",
                 "recovered",
             }
-        },
-        verification={
+        }
+        verification = {
             "status": "observed",
             "method": "agentcontain-platform-events",
+        }
+        proof = {}
+    else:
+        failures = tuple(getattr(report, "failures", ()))
+        persistence_failures = tuple(getattr(report, "persistence_failures", ()))
+        certified = bool(getattr(report, "certified", False))
+        durable = bool(getattr(report, "durable", True))
+        external_verified = bool(getattr(report, "external_verified", False))
+
+        enforcement = {
+            "complete": bool(getattr(report, "complete", False)),
+            "external_verified": external_verified,
+            "certified": certified,
+            "durable": durable,
+            "stages": list(getattr(report, "stages", ())),
+            "failures": list(failures),
+            "persistence_failures": list(persistence_failures),
+            "enforcement_latency_seconds": getattr(
+                report, "enforcement_latency_seconds", None
+            ),
+        }
+        verification = {
+            "status": (
+                "verified"
+                if certified and durable
+                else "degraded"
+                if failures or persistence_failures
+                else "observed"
+            ),
+            "method": "agentcontainment-runtime-report",
+            "scope": "runtime-enforcement",
+        }
+        proof = {
+            "host_enforcement_verified": external_verified,
+            "runtime_report": True,
+        }
+
+    return EvidenceEnvelope.from_execution(
+        execution={
+            "execution_id": identity.execution_id,
+            "agent_id": identity.agent_id,
+            "policy_id": admission.policy.policy_id,
+            "policy_digest": admission.policy.policy_digest,
+            "epoch": identity.epoch,
         },
-        proof={},
+        events=events,
+        enforcement=enforcement,
+        verification=verification,
+        proof=proof,
         governance=governance,
         provenance={"producer": "agentcontain"},
     )
