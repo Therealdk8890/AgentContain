@@ -30,6 +30,9 @@ def test_fleet_status_aggregates_reconciliation_states():
 
     assert report == FleetPolicyStatus(
         rollout_id="rollout-1",
+        policy_id="production",
+        policy_version=2,
+        policy_digest=bundle.policy_digest,
         total_targets=3,
         converged=0,
         pending=1,
@@ -71,6 +74,9 @@ def test_fleet_status_is_deterministic_and_serializable():
 
     assert report.to_dict() == {
         "rollout_id": "rollout-1",
+        "policy_id": "production",
+        "policy_version": 2,
+        "policy_digest": rollout.policy_digest,
         "total_targets": 3,
         "converged": 0,
         "pending": 0,
