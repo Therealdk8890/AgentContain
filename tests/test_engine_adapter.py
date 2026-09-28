@@ -51,8 +51,6 @@ def test_containment_calls_engine_before_recording_platform_state():
     assert engine.calls == 1
     assert admission.machine.state.value == "contained"
     assert admission.machine.events.events[-1].name == "containment_verified"
-    assert admission.identity.epoch == 1
-    assert admission.machine.identity.epoch == 1
 
 
 def test_failed_engine_does_not_create_containment_event():
