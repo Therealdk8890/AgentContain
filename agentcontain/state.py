@@ -23,7 +23,7 @@ class LifecycleState(StrEnum):
 _TRANSITIONS: dict[LifecycleState, frozenset[LifecycleState]] = {
     LifecycleState.NEW: frozenset({LifecycleState.ADMITTED}),
     LifecycleState.ADMITTED: frozenset({LifecycleState.CONTAINED, LifecycleState.DETECTED, LifecycleState.FENCED, LifecycleState.HALTED}),
-    LifecycleState.CONTAINED: frozenset({LifecycleState.DETECTED, LifecycleState.FENCED, LifecycleState.HALTED, LifecycleState.VERIFIED}),
+    LifecycleState.CONTAINED: frozenset({LifecycleState.DETECTED, LifecycleState.FENCED, LifecycleState.HALTED, LifecycleState.VERIFIED, LifecycleState.RECOVERING}),
     LifecycleState.DETECTED: frozenset({LifecycleState.CONTAINED, LifecycleState.FENCED, LifecycleState.HALTED}),
     LifecycleState.FENCED: frozenset({LifecycleState.HALTED, LifecycleState.VERIFIED}),
     LifecycleState.HALTED: frozenset({LifecycleState.VERIFIED, LifecycleState.RECOVERING}),
@@ -86,4 +86,14 @@ class PlatformStateMachine:
         return self.transition(LifecycleState.RECOVERED, event_name="runtime_recovery_complete")
 
     def recontain(self) -> Event:
+        if self.state == LifecycleState.CONTAINED:
+            self._sequence += 1
+            event = Event.create(
+                "recontainment_verified",
+                self.identity.execution_id,
+                self.identity.epoch,
+                self._sequence,
+            )
+            self.events.append(event)
+            return event
         return self.transition(LifecycleState.CONTAINED, event_name="recontainment_verified")
