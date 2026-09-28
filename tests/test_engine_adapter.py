@@ -140,6 +140,7 @@ def test_evidence_governance_requires_registered_agent():
 
 @dataclass(frozen=True)
 class RuntimeReport:
+    epoch: int = 0
     complete: bool = True
     external_verified: bool = True
     certified: bool = True
@@ -182,6 +183,25 @@ def test_evidence_projects_authoritative_runtime_proof():
         "host_enforcement_verified": True,
         "runtime_report": True,
     }
+
+
+def test_evidence_does_not_project_stale_runtime_proof_after_recovery():
+    engine = RuntimeProofEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+    admission.machine.recover()
+    admission.machine.recovered(1)
+    admission.identity = admission.machine.identity
+
+    evidence = evidence_envelope(admission)
+
+    assert evidence.execution["epoch"] == 1
+    assert evidence.verification == {
+        "status": "observed",
+        "method": "agentcontain-platform-events",
+        "reason": "runtime-report-epoch-mismatch",
+    }
+    assert evidence.proof == {}
 
 
 def test_evidence_epoch_mismatch_is_rejected():
