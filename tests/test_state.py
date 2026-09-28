@@ -40,8 +40,11 @@ def test_recovery_advances_execution_epoch():
     machine.verify()
     machine.recover()
 
-    event = machine.recovered()
+    event = machine.recovered(1)
 
     assert machine.identity.epoch == 1
     assert event.epoch == 1
     assert event.execution_id == machine.identity.execution_id
+    assert [e.epoch for e in machine.event_history[0].events] == [0, 0, 0, 0]
+    assert [e.sequence for e in machine.event_history[0].events] == [1, 2, 3, 4]
+    assert [e.sequence for e in machine.events.events] == [1]
