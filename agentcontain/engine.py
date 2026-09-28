@@ -49,6 +49,43 @@ class Admission:
     policy: PolicyBundle
 
 
+class AgentContainmentRuntimeAdapter:
+    """Platform adapter over the controller-owned AgentContainment service.
+
+    The runtime service remains authoritative for containment, recovery
+    authorization, durable incident state, and external enforcement. This
+    adapter only exposes those operations to the platform lifecycle.
+    """
+
+    def __init__(self, agent_id: str, controller, service) -> None:
+        self.agent_id = agent_id
+        self.controller = controller
+        self.service = service
+        self.service.register(agent_id, containment=controller)
+
+    @property
+    def last_report(self):
+        return self.controller.last_report
+
+    def contain(self):
+        return self.service.contain(self.agent_id)
+
+    def halt(self) -> None:
+        self.controller.halt()
+
+    def issue_recovery_authorization(self):
+        return self.service.issue_recovery_authorization(self.agent_id)
+
+    def recover(self, authorization) -> int:
+        return self.service.recover(self.agent_id, authorization)
+
+    def reconcile_containment(self):
+        return self.service.reconcile_containment(self.agent_id)
+
+    def recontain_enforcers(self):
+        return self.controller.recontain_enforcers()
+
+
 def admit(
     policy: Policy,
     *,
@@ -74,8 +111,19 @@ def admit(
     )
 
 
+def detect(admission: Admission, details: dict[str, str] | None = None):
+    """Record an observed anomaly without changing runtime enforcement."""
+    return admission.machine.detect(details)
+
+
 def contain(admission: Admission) -> object:
-    """Invoke AgentContainment and record the successful platform transition."""
+    """Invoke authoritative runtime containment and record its platform state.
+
+    AgentContainment's controller fences the runtime before applying and
+    independently verifying configured enforcement providers. The platform
+    therefore records one atomic containment transition rather than pretending
+    it controls the provider-level fence boundary.
+    """
     report = admission.engine.contain()
     if not getattr(report, "complete", True):
         raise RuntimeError(
@@ -84,6 +132,66 @@ def contain(admission: Admission) -> object:
         )
     admission.machine.contain()
     return report
+
+
+def halt(admission: Admission):
+    """Halt through the runtime authority, then record the platform event."""
+    operation = getattr(admission.engine, "halt", None)
+    if operation is None:
+        raise RuntimeError("enforcement engine does not expose halt")
+    operation()
+    return admission.machine.halt()
+
+
+def verify(admission: Admission):
+    """Record verification only when authoritative runtime proof is sufficient."""
+    report = getattr(admission.engine, "last_report", None)
+    if report is None:
+        raise RuntimeError("runtime verification report is unavailable")
+    if not bool(getattr(report, "complete", False)):
+        raise RuntimeError("runtime verification is incomplete")
+    if not bool(getattr(report, "certified", False)):
+        raise RuntimeError("runtime verification lacks independent external verification")
+    if not bool(getattr(report, "durable", True)):
+        raise RuntimeError("runtime verification evidence is not durable")
+    return admission.machine.verify()
+
+
+def issue_recovery_authorization(admission: Admission):
+    """Request controller-owned recovery authorization for this execution."""
+    operation = getattr(admission.engine, "issue_recovery_authorization", None)
+    if operation is None:
+        raise RuntimeError("enforcement engine does not expose recovery authorization")
+    return operation()
+
+
+def recover(admission: Admission, authorization) -> int:
+    """Recover through the controller-owned authority and record lifecycle state."""
+    operation = getattr(admission.engine, "recover", None)
+    if operation is None:
+        raise RuntimeError("enforcement engine does not expose recovery")
+    admission.machine.recover()
+    try:
+        epoch = operation(authorization)
+    except Exception:
+        # The runtime controller is fail-closed and remains contained on
+        # failed recovery. Reflect that compensation in the platform event log.
+        if admission.machine.state.value == "recovering":
+            admission.machine.recontain()
+        raise
+    admission.machine.recovered()
+    return epoch
+
+
+def recontain(admission: Admission):
+    """Re-verify external enforcement without granting execution authority."""
+    operation = getattr(admission.engine, "recontain_enforcers", None)
+    if operation is None:
+        raise RuntimeError("enforcement engine does not expose recontainment")
+    failures = tuple(operation())
+    if failures:
+        raise RuntimeError("recontainment verification failed: " + "; ".join(failures))
+    return admission.machine.recontain()
 
 
 def containment_receipt(admission: Admission, secret: bytes):
@@ -198,6 +306,7 @@ def build_agentcontainment_engine(
     try:
         from agent_containment.containment import ContainmentController
         from agent_containment.cgroup_enforcer import CgroupV2Enforcer
+        from agent_containment.control import ContainmentService
         from agent_containment.runtime import Runtime
     except ImportError as exc:
         raise RuntimeError(
@@ -207,6 +316,12 @@ def build_agentcontainment_engine(
 
     runtime = Runtime(agent_id)
     if cgroup_path is None:
-        return ContainmentController(runtime)
-    enforcer = CgroupV2Enforcer({agent_id: cgroup_path})
-    return ContainmentController(runtime, enforcers=[enforcer])
+        controller = ContainmentController(runtime)
+    else:
+        enforcer = CgroupV2Enforcer({agent_id: cgroup_path})
+        controller = ContainmentController(runtime, enforcers=[enforcer])
+    return AgentContainmentRuntimeAdapter(
+        agent_id,
+        controller,
+        ContainmentService(),
+    )
