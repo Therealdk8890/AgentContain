@@ -40,6 +40,7 @@ class PlatformStateMachine:
         self.identity = identity
         self.state = LifecycleState.NEW
         self.events = EventLog()
+        self.event_history: list[EventLog] = []
         self._sequence = 0
 
     def transition(self, target: LifecycleState, *, event_name: str, details: dict[str, str] | None = None) -> Event:
