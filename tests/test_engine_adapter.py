@@ -227,7 +227,7 @@ class LifecycleEngine(FakeEngine):
     def recover(self, authorization):
         assert authorization is not None
         self.recovered = True
-        return 2
+        return 1
 
     def recontain_enforcers(self):
         self.recontained = True
@@ -248,9 +248,11 @@ def test_platform_lifecycle_bridge_uses_runtime_authority():
     authorization = issue_recovery_authorization(admission)
     epoch = recover(admission, authorization)
 
-    assert epoch == 2
+    assert epoch == 1
     assert engine.recovered is True
     assert admission.machine.state.value == "recovered"
+    assert admission.identity.epoch == epoch
+    assert admission.identity == admission.machine.identity
 
 
 def test_platform_halt_delegates_to_runtime_authority():
@@ -290,3 +292,19 @@ def test_recontain_requires_runtime_verification():
 
     assert engine.recontained is True
     assert admission.machine.state.value == "contained"
+
+
+def test_recovery_rejects_runtime_epoch_divergence():
+    class DivergentRecoveryEngine(LifecycleEngine):
+        def recover(self, authorization):
+            return 2
+
+    engine = DivergentRecoveryEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+
+    with pytest.raises(RuntimeError, match="does not match expected platform epoch"):
+        recover(admission, issue_recovery_authorization(admission))
+
+    assert admission.machine.state.value == "recovering"
+    assert admission.identity.epoch == 0
