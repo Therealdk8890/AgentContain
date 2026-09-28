@@ -130,6 +130,24 @@ def contain(admission: Admission) -> object:
             "enforcement engine reported containment failures: "
             + "; ".join(getattr(report, "failures", ()))
         )
+
+    # AgentContainment advances its execution epoch when containment takes
+    # effect. When the authoritative report exposes that epoch, require the
+    # exact next platform epoch and adopt it before recording the lifecycle
+    # event. This keeps receipts, events, and runtime proof in one namespace.
+    report_epoch = getattr(report, "epoch", None)
+    if report_epoch is not None:
+        if isinstance(report_epoch, bool) or not isinstance(report_epoch, int):
+            raise TypeError("runtime containment epoch must be an integer")
+        expected_epoch = admission.identity.epoch + 1
+        if report_epoch != expected_epoch:
+            raise RuntimeError(
+                f"runtime containment epoch {report_epoch} does not match "
+                f"expected platform epoch {expected_epoch}"
+            )
+        admission.machine.identity = admission.machine.identity.advance_epoch()
+        admission.identity = admission.machine.identity
+
     admission.machine.contain()
     return report
 
