@@ -145,6 +145,12 @@ def contain(admission: Admission) -> object:
                 f"runtime containment epoch {report_epoch} does not match "
                 f"expected platform epoch {expected_epoch}"
             )
+        # The epoch transition also closes the prior epoch's live event log.
+        # Keep that log auditable, but do not mix its epoch-0 events with the
+        # new epoch-1 evidence envelope.
+        admission.machine.event_history.append(admission.machine.events)
+        admission.machine.events = type(admission.machine.events)()
+        admission.machine._sequence = 0
         admission.machine.identity = admission.machine.identity.advance_epoch()
         admission.identity = admission.machine.identity
 
