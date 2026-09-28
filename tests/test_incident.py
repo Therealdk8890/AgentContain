@@ -22,8 +22,7 @@ def test_incident_projection_preserves_runtime_identity_and_trigger() -> None:
 
 
 def test_incident_projection_tracks_verified_recovery() -> None:
-    identity = ExecutionIdentity.create("agent-1", "policy-1", "digest-1")
-    machine = PlatformStateMachine(identity)
+    machine = PlatformStateMachine(ExecutionIdentity.create("agent-1", "policy-1", "digest-1"))
     machine.admit()
     machine.contain()
     machine.detect()
@@ -31,10 +30,10 @@ def test_incident_projection_tracks_verified_recovery() -> None:
     machine.halt()
     machine.verify()
     machine.recover()
-    machine.recovered()
+    machine.recovered(1)
 
     incident = IncidentSummary.from_execution(
-        identity,
+        machine.identity,
         machine.events.events,
         proof_status="verified",
     )
@@ -42,3 +41,4 @@ def test_incident_projection_tracks_verified_recovery() -> None:
     assert incident.status is IncidentStatus.RECOVERED
     assert incident.latest_event == "runtime_recovery_complete"
     assert incident.proof_status == "verified"
+    assert incident.epoch == 1
