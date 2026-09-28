@@ -146,6 +146,16 @@ def halt(admission: Admission):
 def verify(admission: Admission):
     """Record verification only when authoritative runtime proof is sufficient."""
     report = getattr(admission.engine, "last_report", None)
+    report_epoch = getattr(report, "epoch", None) if report is not None else None
+    stale_runtime_report = (
+        report is not None
+        and report_epoch is not None
+        and report_epoch != identity.epoch
+    )
+    if stale_runtime_report:
+        # A runtime proof is epoch-scoped. Never project a containment report
+        # from a prior epoch into the current execution's verified envelope.
+        report = None
     if report is None:
         raise RuntimeError("runtime verification report is unavailable")
     if not bool(getattr(report, "complete", False)):
@@ -241,6 +251,8 @@ def evidence_envelope(admission: Admission, *, fleet: FleetRegistry | None = Non
             "status": "observed",
             "method": "agentcontain-platform-events",
         }
+        if stale_runtime_report:
+            verification["reason"] = "runtime-report-epoch-mismatch"
         proof = {}
     else:
         failures = tuple(getattr(report, "failures", ()))
