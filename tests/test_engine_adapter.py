@@ -51,6 +51,8 @@ def test_containment_calls_engine_before_recording_platform_state():
     assert engine.calls == 1
     assert admission.machine.state.value == "contained"
     assert admission.machine.events.events[-1].name == "containment_verified"
+    assert admission.identity.epoch == 1
+    assert admission.machine.identity.epoch == 1
 
 
 def test_failed_engine_does_not_create_containment_event():
@@ -140,7 +142,7 @@ def test_evidence_governance_requires_registered_agent():
 
 @dataclass(frozen=True)
 class RuntimeReport:
-    epoch: int = 0
+    epoch: int = 1
     complete: bool = True
     external_verified: bool = True
     certified: bool = True
@@ -190,7 +192,7 @@ def test_verify_rejects_stale_runtime_proof_after_recovery():
     admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
     contain(admission)
     admission.machine.recover()
-    admission.machine.recovered(1)
+    admission.machine.recovered(2)
     admission.identity = admission.machine.identity
 
     with pytest.raises(RuntimeError, match="runtime verification report is unavailable"):
@@ -202,7 +204,7 @@ def test_containment_receipt_rejects_stale_runtime_report_after_recovery():
     admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
     contain(admission)
     admission.machine.recover()
-    admission.machine.recovered(1)
+    admission.machine.recovered(2)
     admission.identity = admission.machine.identity
 
     with pytest.raises(RuntimeError, match="containment report epoch"):
@@ -214,12 +216,12 @@ def test_evidence_does_not_project_stale_runtime_proof_after_recovery():
     admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
     contain(admission)
     admission.machine.recover()
-    admission.machine.recovered(1)
+    admission.machine.recovered(2)
     admission.identity = admission.machine.identity
 
     evidence = evidence_envelope(admission)
 
-    assert evidence.execution["epoch"] == 1
+    assert evidence.execution["epoch"] == 2
     assert evidence.verification == {
         "status": "observed",
         "method": "agentcontain-platform-events",
