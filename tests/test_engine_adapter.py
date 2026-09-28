@@ -3,7 +3,18 @@ from dataclasses import dataclass
 import pytest
 
 from agentcontain import Policy
-from agentcontain.engine import admit, contain, containment_receipt, evidence_envelope
+from agentcontain.engine import (
+    admit,
+    contain,
+    containment_receipt,
+    detect,
+    evidence_envelope,
+    halt,
+    issue_recovery_authorization,
+    recover,
+    recontain,
+    verify,
+)
 
 
 @dataclass(frozen=True)
@@ -182,3 +193,84 @@ def test_evidence_epoch_mismatch_is_rejected():
 
     with pytest.raises(ValueError, match="event epoch does not match"):
         type(evidence_envelope(admission)).from_dict(document)
+
+
+class LifecycleEngine(FakeEngine):
+    def __init__(self):
+        super().__init__()
+        self.halted = False
+        self.recovered = False
+        self.recontained = False
+
+    def halt(self):
+        self.halted = True
+
+    def issue_recovery_authorization(self):
+        return object()
+
+    def recover(self, authorization):
+        assert authorization is not None
+        self.recovered = True
+        return 2
+
+    def recontain_enforcers(self):
+        self.recontained = True
+        return ()
+
+
+def test_platform_lifecycle_bridge_uses_runtime_authority():
+    engine = LifecycleEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+
+    detect(admission, {"reason": "policy_violation"})
+    contain(admission)
+    verify(admission)
+
+    assert admission.machine.state.value == "verified"
+    assert admission.machine.events.events[-1].name == "verification_completed"
+
+    authorization = issue_recovery_authorization(admission)
+    epoch = recover(admission, authorization)
+
+    assert epoch == 2
+    assert engine.recovered is True
+    assert admission.machine.state.value == "recovered"
+
+
+def test_platform_halt_delegates_to_runtime_authority():
+    engine = LifecycleEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+
+    halt(admission)
+
+    assert engine.halted is True
+    assert admission.machine.state.value == "halted"
+    assert admission.machine.events.events[-1].name == "halt_requested"
+
+
+def test_failed_recovery_recontains_platform_state():
+    class FailingRecoveryEngine(LifecycleEngine):
+        def recover(self, authorization):
+            raise RuntimeError("release failed")
+
+    engine = FailingRecoveryEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+
+    with pytest.raises(RuntimeError, match="release failed"):
+        recover(admission, issue_recovery_authorization(admission))
+
+    assert admission.machine.state.value == "contained"
+    assert admission.machine.events.events[-1].name == "recontainment_verified"
+
+
+def test_recontain_requires_runtime_verification():
+    engine = LifecycleEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+
+    recontain(admission)
+
+    assert engine.recontained is True
+    assert admission.machine.state.value == "contained"
