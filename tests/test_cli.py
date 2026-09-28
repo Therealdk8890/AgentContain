@@ -68,7 +68,9 @@ def test_cli_writes_portable_evidence_file(monkeypatch, tmp_path, capsys) -> Non
     assert document["schema_version"] == "agentcontain.evidence/v2"
     assert document["execution"]["agent_id"] == "agent-1"
     assert document["execution"]["policy_id"] == "production"
-    assert document["verification"]["status"] == "observed"
+    assert document["verification"]["status"] == "verified"
+    assert document["verification"]["method"] == "agentcontainment-runtime-report"
+    assert document["proof"]["host_enforcement_verified"] is True
     assert "Evidence:" in capsys.readouterr().out
 
 
