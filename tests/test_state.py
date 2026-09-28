@@ -31,3 +31,17 @@ def test_verify_emits_verification_event() -> None:
 
     assert machine.state is LifecycleState.VERIFIED
     assert event.name == "verification_completed"
+
+
+def test_recovery_advances_execution_epoch():
+    machine = _machine()
+    machine.admit()
+    machine.contain()
+    machine.verify()
+    machine.recover()
+
+    event = machine.recovered()
+
+    assert machine.identity.epoch == 1
+    assert event.epoch == 1
+    assert event.execution_id == machine.identity.execution_id
