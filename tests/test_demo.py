@@ -8,10 +8,10 @@ def test_cli_demo_is_no_root_and_verifies_receipt(capsys) -> None:
     assert "SIMULATED (no kernel enforcement)" in output
     assert "Incident" in output
     assert "Trigger:     anomaly_detected" in output
-    assert "Status:      VERIFIED" in output
-    assert "Proof:       VERIFIED" in output
+    assert "Status:      OBSERVED" in output
+    assert "Proof:       OBSERVED" in output
     assert "Evidence:    OBSERVED" in output
-    assert "Verification: VERIFIED" in output
+    assert "Verification: NOT CLAIMED (simulated)" in output
     assert "Receipt:     AUTHENTICATED" in output
     assert "Receipt ID:" in output
     assert "Verified ≠ claim is true" in output
