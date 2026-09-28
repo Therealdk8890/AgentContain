@@ -24,7 +24,7 @@ _TRANSITIONS: dict[LifecycleState, frozenset[LifecycleState]] = {
     LifecycleState.NEW: frozenset({LifecycleState.ADMITTED}),
     LifecycleState.ADMITTED: frozenset({LifecycleState.CONTAINED, LifecycleState.DETECTED, LifecycleState.FENCED, LifecycleState.HALTED}),
     LifecycleState.CONTAINED: frozenset({LifecycleState.DETECTED, LifecycleState.FENCED, LifecycleState.HALTED, LifecycleState.VERIFIED}),
-    LifecycleState.DETECTED: frozenset({LifecycleState.FENCED, LifecycleState.HALTED}),
+    LifecycleState.DETECTED: frozenset({LifecycleState.CONTAINED, LifecycleState.FENCED, LifecycleState.HALTED}),
     LifecycleState.FENCED: frozenset({LifecycleState.HALTED, LifecycleState.VERIFIED}),
     LifecycleState.HALTED: frozenset({LifecycleState.VERIFIED, LifecycleState.RECOVERING}),
     LifecycleState.VERIFIED: frozenset({LifecycleState.RECOVERING}),
