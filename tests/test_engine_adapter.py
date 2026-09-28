@@ -125,3 +125,60 @@ def test_evidence_governance_requires_registered_agent():
 
     with pytest.raises(KeyError):
         evidence_envelope(admission, fleet=FleetRegistry())
+
+
+@dataclass(frozen=True)
+class RuntimeReport:
+    complete: bool = True
+    external_verified: bool = True
+    certified: bool = True
+    durable: bool = True
+    stages: tuple[str, ...] = ("runtime_fenced", "enforcer:cgroup-v2:verified")
+    failures: tuple[str, ...] = ()
+    persistence_failures: tuple[str, ...] = ()
+    enforcement_latency_seconds: float = 0.14
+
+
+class RuntimeProofEngine(FakeEngine):
+    def contain(self):
+        self.calls += 1
+        self.last_report = RuntimeReport()
+        return self.last_report
+
+
+def test_evidence_projects_authoritative_runtime_proof():
+    engine = RuntimeProofEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+    contain(admission)
+
+    evidence = evidence_envelope(admission)
+
+    assert evidence.enforcement["complete"] is True
+    assert evidence.enforcement["external_verified"] is True
+    assert evidence.enforcement["certified"] is True
+    assert evidence.enforcement["durable"] is True
+    assert evidence.enforcement["stages"] == [
+        "runtime_fenced",
+        "enforcer:cgroup-v2:verified",
+    ]
+    assert evidence.enforcement["enforcement_latency_seconds"] == 0.14
+    assert evidence.verification == {
+        "status": "verified",
+        "method": "agentcontainment-runtime-report",
+        "scope": "runtime-enforcement",
+    }
+    assert evidence.proof == {
+        "host_enforcement_verified": True,
+        "runtime_report": True,
+    }
+
+
+def test_evidence_epoch_mismatch_is_rejected():
+    policy = Policy("production")
+    admission = admit(policy, agent_id="agent-1", engine=FakeEngine())
+    contain(admission)
+    document = evidence_envelope(admission).to_dict()
+    document["events"][0]["epoch"] = admission.identity.epoch + 1
+
+    with pytest.raises(ValueError, match="event epoch does not match"):
+        type(evidence_envelope(admission)).from_dict(document)
