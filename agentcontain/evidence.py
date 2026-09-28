@@ -150,10 +150,13 @@ class EvidenceEnvelope:
             raise ValueError(f"invalid verification status: {status}")
 
         execution_id = self.execution["execution_id"]
+        execution_epoch = self.execution["epoch"]
         sequences: list[int] = []
         for event in self.events:
             if event.get("execution_id") != execution_id:
                 raise ValueError("event execution_id does not match envelope")
+            if "epoch" in event and event.get("epoch") != execution_epoch:
+                raise ValueError("event epoch does not match envelope execution")
             sequence = event.get("sequence")
             if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 1:
                 raise ValueError("event sequence must be a positive integer")
