@@ -191,8 +191,24 @@ def test_evidence_epoch_mismatch_is_rejected():
     document = evidence_envelope(admission).to_dict()
     document["events"][0]["epoch"] = admission.identity.epoch + 1
 
-    with pytest.raises(ValueError, match="event epoch does not match"):
+    with pytest.raises(ValueError, match="event epoch cannot exceed"):
         type(evidence_envelope(admission)).from_dict(document)
+
+
+def test_evidence_preserves_event_history_across_recovery_epochs():
+    engine = LifecycleEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+
+    contain(admission)
+    verify(admission)
+    epoch = recover(admission, issue_recovery_authorization(admission))
+
+    assert epoch == 2
+    evidence = evidence_envelope(admission)
+
+    assert evidence.execution["epoch"] == 1
+    assert [event["epoch"] for event in evidence.events] == [0, 0, 0, 1]
+    assert [event["sequence"] for event in evidence.events] == [1, 2, 3, 4]
 
 
 class LifecycleEngine(FakeEngine):
