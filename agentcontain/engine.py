@@ -146,7 +146,7 @@ def contain(admission: Admission) -> object:
                 f"expected platform epoch {expected_epoch}"
             )
         # Keep epoch transition ownership inside the platform state machine.
-        admission.machine.reset_epoch(report_epoch)
+        admission.machine.start_new_epoch(report_epoch)
         admission.identity = admission.machine.identity
 
     admission.machine.contain()
