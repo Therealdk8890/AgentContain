@@ -414,8 +414,8 @@ def test_authoritative_epoch_chain_spans_containment_recovery_and_evidence():
     assert admission.machine.identity.epoch == 2
     assert len(admission.machine.event_history) == 2
     assert [event.epoch for event in admission.machine.event_history[0].events] == [0]
-    assert [event.epoch for event in admission.machine.event_history[1].events] == [1, 1]
-    assert [event.sequence for event in admission.machine.event_history[1].events] == [1, 2]
+    assert [event.epoch for event in admission.machine.event_history[1].events] == [1, 1, 1]
+    assert [event.sequence for event in admission.machine.event_history[1].events] == [1, 2, 3]
     assert [event.epoch for event in admission.machine.events.events] == [2]
     assert [event.sequence for event in admission.machine.events.events] == [1]
 
