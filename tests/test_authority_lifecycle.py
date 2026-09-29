@@ -74,13 +74,13 @@ def test_authorized_execution_violation_revokes_authority_before_recovery():
     assert not credentials.valid(old_lease)
 
     historical_events = [
-        event.event_name
+        event.name
         for event in admission.machine.event_history[0].events
     ]
     assert historical_events == ["admission_verified"]
 
     contained_epoch_events = [
-        event.event_name
+        event.name
         for event in admission.machine.event_history[1].events
     ]
     assert contained_epoch_events == [
@@ -88,5 +88,5 @@ def test_authorized_execution_violation_revokes_authority_before_recovery():
         "recovery_requested",
     ]
 
-    current_events = [event.event_name for event in admission.machine.events.events]
+    current_events = [event.name for event in admission.machine.events.events]
     assert current_events == ["runtime_recovery_complete"]
