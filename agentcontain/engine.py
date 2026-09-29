@@ -64,6 +64,16 @@ class AgentContainmentRuntimeAdapter:
         self.service.register(agent_id, containment=controller)
 
     @property
+    def credential_store(self):
+        """Reference credential lease store owned by the runtime controller.
+
+        Credential leases are revoked as part of authoritative containment.
+        This exposes the existing AgentContainment reference-model boundary to
+        WarrantKit without making WarrantKit the credential provider.
+        """
+        return getattr(self.controller, "credentials", None)
+
+    @property
     def last_report(self):
         return self.controller.last_report
 
@@ -355,6 +365,7 @@ def build_agentcontainment_engine(
         from agent_containment.containment import ContainmentController
         from agent_containment.cgroup_enforcer import CgroupV2Enforcer
         from agent_containment.control import ContainmentService
+        from agent_containment.credentials import CredentialStore
         from agent_containment.runtime import Runtime
     except ImportError as exc:
         raise RuntimeError(
@@ -363,11 +374,20 @@ def build_agentcontainment_engine(
         ) from exc
 
     runtime = Runtime(agent_id)
+    # Credential leases are part of the runtime authority boundary. They must
+    # be attached to the same controller that performs containment so a fence
+    # revokes previously issued credential authority atomically with the
+    # containment transition.
+    credentials = CredentialStore()
     if cgroup_path is None:
-        controller = ContainmentController(runtime)
+        controller = ContainmentController(runtime, credentials=credentials)
     else:
         enforcer = CgroupV2Enforcer({agent_id: cgroup_path})
-        controller = ContainmentController(runtime, enforcers=[enforcer])
+        controller = ContainmentController(
+            runtime,
+            credentials=credentials,
+            enforcers=[enforcer],
+        )
     return AgentContainmentRuntimeAdapter(
         agent_id,
         controller,
