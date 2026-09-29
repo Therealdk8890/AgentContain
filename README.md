@@ -1,23 +1,27 @@
 # WarrantKit
 
-**Runtime security and evidence platform for autonomous AI agents.**
+[![WarrantKit CI](https://github.com/Therealdk8890/WarrantKit/actions/workflows/ci.yml/badge.svg)](https://github.com/Therealdk8890/WarrantKit/actions/workflows/ci.yml)
+
+**Runtime authorization, containment, and evidence platform for autonomous AI agents.**
 
 > **Don't ask the agent to enforce its own boundaries. Enforce them from outside the agent trust boundary.**
 
-WarrantKit is the buyer-facing platform layer around the AgentContainment runtime enforcement engine. It is designed to answer a practical enterprise question: **what is an autonomous agent allowed to do, what happens when it crosses that boundary, and can we prove what happened?**
+WarrantKit is the buyer-facing runtime security platform around the AgentContainment enforcement engine. It answers a practical enterprise question: **what is an autonomous agent allowed to do, what happens when it crosses that boundary, how do we revoke its authority, and can we prove that the security boundary held?**
 
 ## The product
 
 Autonomous agents can execute code, access data, call external services, and manage infrastructure. The operational problem is not only observing those actions; it is controlling them, responding when policy is violated, and producing evidence that the control actually operated.
 
-WarrantKit is designed as a runtime security and evidence platform: define policy, establish execution identity, enforce boundaries outside the agent trust boundary, detect violations, contain and recover workloads, and produce machine-readable evidence for security operations and audit workflows.
+WarrantKit is designed first as an enforcement system: define policy, establish execution identity, enforce boundaries outside the agent trust boundary, detect violations, revoke authority and credential/capability use, halt or contain the workload, and require fresh authorization for recovery. The evidence architecture then independently records and evaluates what happened so the control is not merely asserted.
 
 The core workflow is:
 
-**Discover → Authorize → Enforce → Detect → Contain → Verify → Recover → Prove**
+**Discover → Authorize → Enforce → Detect → Revoke → Halt/Contain → Verify → Recover → Prove**
 
 For enterprise security and governance teams, this translates into:
 
+- **Authorization:** define the actions, resources, credentials, and execution conditions an agent is permitted to use.
+- **Authority revocation:** invalidate stale or violated authority and revoke credential/capability use when policy requires it.
 - **Containment:** limit what an agent workload can do at runtime, including process and egress controls where supported.
 - **Fail-closed response:** fence and halt workloads when enforcement or recovery conditions require it.
 - **Auditability:** produce structured execution evidence and tamper-evident verification receipts.
@@ -32,7 +36,7 @@ WarrantKit is a platform built from components with distinct responsibilities an
 
 | Component | Platform role |
 |---|---|
-| **WarrantKit** | Correlation/control layer — policy, admission, execution identity, lifecycle coordination, fleet governance, and evidence correlation. It does not become the authority over independently produced facts. |
+| **WarrantKit** | Runtime control layer — authorization, admission, execution identity, authority/credential lifecycle, containment coordination, recovery gating, fleet governance, and evidence correlation. It does not become the universal authority over independently produced facts. |
 | **AgentContainment** | Runtime enforcement evidence — fencing, containment, recovery, epoch invalidation, and host/provider enforcement results. |
 | **Warden** | Observation evidence — independently records agent activity and runtime state at its observation boundary. |
 | **ClaimProofKit** | Verification evidence — independently evaluates whether supplied claims/actions are supported by supplied evidence under its verifier rules. |
@@ -149,7 +153,7 @@ WarrantKit
 
 The platform lifecycle is:
 
-**Policy → Admit → Contain → Detect → Fence → Halt → Verify → Recover → Receipt**
+**Policy → Admit → Enforce → Detect → Revoke → Fence/Halt → Verify → Recover under fresh authority → Receipt**
 
 ## Core engine
 
@@ -171,7 +175,9 @@ WarrantKit is being built for teams operating autonomous agents where an executi
 
 - **Runtime authorization:** define what an agent, workload, credential, and network path are permitted to do.
 - **Policy violation response:** detect an attempted violation and move from authorization failure to runtime containment when required.
-- **Incident containment:** fence execution, invalidate stale authority, revoke credential use, and halt the workload through the enforcement layer.
+- **Incident containment:** detect a policy violation, invalidate stale authority, revoke credential/capability use, and halt or contain the workload through the enforcement layer.
+- **Authority lifecycle:** bind authority to agent identity, policy identity, execution identity, and epoch so a violation or recovery transition cannot silently preserve stale authorization.
+- **Credential security:** revoke or invalidate secrets and credentials associated with violated or expired authority rather than relying on the agent to stop using them.
 - **Verification and evidence:** distinguish an observed event from successful verification and bind the resulting evidence to an authenticated receipt.
 - **Recovery:** release external enforcement only after the required conditions are independently verified, then restore execution under a fresh authority epoch.
 - **Fleet governance:** associate agents with organization, project, runtime, policy, status, and rollout state without allowing governance infrastructure to weaken local enforcement.
@@ -198,6 +204,7 @@ The commercial platform layer will add the operator workflow, centralized eviden
 
 - Runtime enforcement outside the agent trust boundary.
 - Deterministic admission and policy control.
+- Authority and credential/capability revocation after policy violations.
 - Epoch fencing and stale-authority invalidation.
 - Linux cgroup v2 process containment.
 - Kernel-level egress enforcement integrations.
@@ -238,7 +245,7 @@ Current platform primitives include:
 - **Fleet policy status** as a stable machine-readable aggregate.
 - **Immutable status history** with monotonic snapshots, collision detection, and idempotent append behavior.
 
-The design intentionally keeps rollout and fleet observation from becoming enforcement authority. Local runtimes remain authoritative for accepting and enforcing policy.
+The design intentionally keeps rollout and fleet observation from becoming the security enforcement boundary. Local enforcement remains the final control point for accepting and enforcing policy, while WarrantKit controls the authorization lifecycle around it.
 
 The open package provides these as **local governance primitives**. They do not constitute a hosted multi-tenant control plane, server-side RBAC system, or centralized enforcement authority.
 
@@ -246,7 +253,7 @@ The open package provides these as **local governance primitives**. They do not 
 
 The open foundation is intentionally inspectable and independently usable. The commercial WarrantKit platform is where centralized operations become the product: fleet-wide policy distribution, durable evidence retention, incident workflows, enterprise identity and RBAC, SIEM/SOAR integrations, deployment automation, and supported production operations.
 
-The enforcement boundary remains local and authoritative. A hosted control plane must never be able to weaken containment because of network failure, billing state, service outage, or loss of connectivity.
+The enforcement boundary remains local and must fail closed. A hosted control plane must never be able to weaken containment, restore revoked authority, or resurrect credentials because of network failure, billing state, service outage, or loss of connectivity.
 
 ## Enterprise & support
 
@@ -260,7 +267,7 @@ The open platform provides local fleet governance, runtime enforcement, independ
 - Alerts, webhooks, SIEM, and observability integrations.
 - Deployment and integration support.
 
-The security-critical runtime remains authoritative for enforcement. Fleet governance and any future centralized control plane must not be able to weaken local containment because of a network outage, billing state, unavailable service, or control-plane failure.
+The security-critical runtime remains the local enforcement boundary. Fleet governance and any future centralized control plane must not be able to weaken local containment, restore revoked authority, or resurrect credentials because of a network outage, billing state, unavailable service, or control-plane failure.
 
 **For enterprise integration, design-partner deployments, or custom security engineering, contact the project maintainers.**
 
@@ -272,7 +279,7 @@ The security-critical runtime remains authoritative for enforcement. Fleet gover
                     │
        ┌────────────┼────────────┐
        │            │            │
-    Warden       DPK        ClaimProofKit
+    Warden   DProvenanceKit  ClaimProofKit
   observation  provenance    verification
        │            │            │
        └────────────┼────────────┘
