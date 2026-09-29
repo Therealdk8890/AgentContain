@@ -26,6 +26,27 @@ For enterprise security and governance teams, this translates into:
 
 WarrantKit can support security review and compliance evidence workflows, but it does not by itself make an organization compliant with SOC 2, HIPAA, or any other regulatory framework.
 
+## Implementation status
+
+The table below distinguishes implemented platform capabilities from environment-gated proof and future product work. **Implemented** describes code present in the repository; **CI-tested** means the behavior is covered by automated CI; **Privileged integration-tested** means the proof requires a Linux host with the required kernel/cgroup privileges. A passing test is evidence for the tested environment, not a universal security guarantee.
+
+| Capability | Current status | Evidence boundary |
+|---|---|---|
+| External authorization and admission | **Implemented · CI-tested** | Policy/admission and execution identity are enforced outside the agent runtime. |
+| Runtime containment and fencing | **Implemented · CI-tested** | Delegated to the pinned AgentContainment engine. |
+| Epoch fencing / stale-authority invalidation | **Implemented · CI-tested** | End-to-end containment → recovery → evidence regression is green on `main`. |
+| Fail-closed recovery | **Implemented · CI-tested** | Recovery is runtime-authoritative; failed recovery is compensated back to containment. |
+| Evidence envelopes and epoch scoping | **Implemented · CI-tested** | Structured evidence rejects stale runtime proof and preserves prior epoch history separately. |
+| HMAC-authenticated receipts | **Implemented · CI-tested** | Shared-secret authentication and tamper detection; not non-repudiable attestation. |
+| Linux cgroup-v2 workload containment | **Implemented · privileged integration-tested** | Real-workload proof is environment-gated and requires Linux cgroup v2 plus host privileges/delegation. |
+| Adversarial containment/security regression tests | **Implemented · CI-tested** | Tests exercise fail-closed behavior and stale-authority/escape conditions in the tested environment. |
+| Local fleet governance primitives | **Implemented · CI-tested** | Inventory, assignments, rollout/reconciliation, and status-history primitives are local foundations. |
+| Hosted multi-tenant control plane | **Planned** | Centralized orchestration, durable evidence retention, enterprise RBAC, and hosted operations are product-layer work. |
+| Enterprise integrations | **Planned / integration-dependent** | SIEM/SOAR, identity, alerting, deployment automation, and supported production operations are not implied by the open foundation. |
+| Non-repudiable host attestation | **Planned** | Current receipts are HMAC-authenticated; stronger asymmetric/host-anchored attestation is a future trust model. |
+
+The security-critical AgentContainment engine is pinned as a submodule rather than treated as an unpinned dependency. Current WarrantKit CI validates the platform against that pinned engine revision. Provider-specific integrations remain subject to their own host, kernel, network, and deployment requirements.
+
 ## Proof semantics
 
 WarrantKit deliberately separates three different claims about an execution:
