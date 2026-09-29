@@ -59,4 +59,4 @@ def test_start_new_epoch_adopts_runtime_epoch_and_archives_live_log():
     assert machine.identity.epoch == 1
     assert [e.epoch for e in machine.event_history[0].events] == [0]
     assert [e.sequence for e in machine.event_history[0].events] == [1]
-    assert machine.events.events == []
+    assert machine.events.events == ()
