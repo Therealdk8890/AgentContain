@@ -1,18 +1,18 @@
 # Commercial Productization Gap Analysis
 
 **Status:** Working productization plan  
-**Scope:** AgentContain platform layer  
+**Scope:** WarrantKit platform layer  
 **Date:** 2026-09-26
 
 ## Purpose
 
-This document translates the existing AgentContain architecture into a buyer-facing product path. It is intentionally grounded in the capabilities already present in this repository and in the trust boundary defined by AgentContainment.
+This document translates the existing WarrantKit architecture into a buyer-facing product path. It is intentionally grounded in the capabilities already present in this repository and in the trust boundary defined by AgentContainment.
 
 The goal is not to rebuild the enforcement engine. The goal is to put a usable control-plane and operator experience around the existing runtime, evidence, policy, fleet, and verification primitives.
 
 ## Product promise
 
-AgentContain answers four operational questions for autonomous-agent workloads:
+WarrantKit answers four operational questions for autonomous-agent workloads:
 
 1. **What is this execution authorized to do?**
 2. **What happened when it crossed that boundary?**
@@ -54,7 +54,7 @@ The runtime remains authoritative for enforcement. The control plane coordinates
 
 ## What is already valuable
 
-AgentContain already contains the foundations that should remain the product's technical spine:
+WarrantKit already contains the foundations that should remain the product's technical spine:
 
 - deterministic policy identity and digests
 - execution identity and authority epochs
@@ -79,7 +79,7 @@ These should be exposed through a coherent product experience rather than duplic
 ## Target commercial architecture
 
 ```text
-                    AgentContain Control Plane
+                    WarrantKit Control Plane
           ┌─────────────────────────────────────────┐
           │ Organizations / Projects / RBAC         │
           │ Fleet / Policy / Rollouts                │
@@ -90,7 +90,7 @@ These should be exposed through a coherent product experience rather than duplic
                     authenticated control API
                               │
           ┌───────────────────▼─────────────────────┐
-          │        AgentContain Runtime Adapter     │
+          │        WarrantKit Runtime Adapter     │
           │ identity • policy • events • evidence    │
           └───────────────────┬─────────────────────┘
                               │
@@ -297,7 +297,7 @@ The product should optimize for durable technical differentiation, not merely a 
 - enterprise control-plane monetization
 - operational data and evidence workflows that become more valuable as fleet size grows
 
-The objective is to make AgentContain a control and evidence layer that security teams can deploy alongside existing infrastructure, not a replacement for every existing security product.
+The objective is to make WarrantKit a control and evidence layer that security teams can deploy alongside existing infrastructure, not a replacement for every existing security product.
 
 ## Explicit non-goals
 

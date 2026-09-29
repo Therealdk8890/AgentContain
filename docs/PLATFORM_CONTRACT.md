@@ -1,8 +1,8 @@
-# AgentContain Platform Contract
+# WarrantKit Platform Contract
 
 **Status:** v0.1 design contract
 
-This document defines the trust boundary and evidence semantics for the AgentContain platform.
+This document defines the trust boundary and evidence semantics for the WarrantKit platform.
 
 ## Trust boundary
 
@@ -27,7 +27,7 @@ A stale execution must not regain authority merely because an old credential, pr
 
 ## Evidence semantics
 
-AgentContain distinguishes three concepts:
+WarrantKit distinguishes three concepts:
 
 1. **Observation** — something was observed or reported.
 2. **Proof evidence** — a designated test or verifier established a specific property in a tested environment.

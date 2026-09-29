@@ -1,8 +1,8 @@
-# AgentContain Product Strategy
+# WarrantKit Product Strategy
 
 ## North star
 
-**AgentContain is a runtime security and evidence platform for autonomous AI agents.**
+**WarrantKit is a runtime security and evidence platform for autonomous AI agents.**
 
 The product exists to answer four operational questions:
 
@@ -25,7 +25,7 @@ The commercial value comes from closing the loop between policy, runtime enforce
 
 ## Product architecture
 
-### 1. Control plane — AgentContain
+### 1. Control plane — WarrantKit
 
 Owns:
 
@@ -267,7 +267,7 @@ Exact packaging and pricing require buyer validation.
 
 ## What not to build first
 
-Do not turn AgentContain into:
+Do not turn WarrantKit into:
 
 - a generic SIEM
 - a generic observability platform

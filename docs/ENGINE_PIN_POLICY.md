@@ -1,10 +1,10 @@
 # AgentContainment engine pin policy
 
-AgentContain consumes AgentContainment as a Git submodule so the security-critical enforcement implementation remains independently reviewable and version-pinned.
+WarrantKit consumes AgentContainment as a Git submodule so the security-critical enforcement implementation remains independently reviewable and version-pinned.
 
 ## Pinning rule
 
-Every AgentContain release or security-significant platform change records the exact AgentContainment commit contained by that revision.
+Every WarrantKit release or security-significant platform change records the exact AgentContainment commit contained by that revision.
 
 For normal development, review the engine pin at least once per week and whenever AgentContainment publishes a security-relevant release or hardening change.
 
@@ -12,7 +12,7 @@ A pin bump must:
 
 1. identify the previous and new engine commits;
 2. review the engine changes between those commits for adapter compatibility and security impact;
-3. run AgentContain's full unit suite;
+3. run WarrantKit's full unit suite;
 4. run the privileged integration proof when the environment permits it;
 5. record the new pin in the resulting release notes or changelog.
 

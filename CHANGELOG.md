@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to AgentContain are documented here.
+All notable changes to WarrantKit are documented here.
 
 The project is currently pre-1.0. Entries describe shipped repository changes; they do not imply a production security guarantee.
 

@@ -1,6 +1,6 @@
-# AgentContain Platform Roadmap
+# WarrantKit Platform Roadmap
 
-AgentContain is the platform surface around the AgentContainment enforcement engine.
+WarrantKit is the platform surface around the AgentContainment enforcement engine.
 
 ## v0.1 — Platform contract
 

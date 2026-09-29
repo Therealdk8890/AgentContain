@@ -1,16 +1,16 @@
-# AgentContain
+# WarrantKit
 
 **Runtime security and evidence platform for autonomous AI agents.**
 
 > **Don't ask the agent to enforce its own boundaries. Enforce them from outside the agent trust boundary.**
 
-AgentContain is the buyer-facing platform layer around the AgentContainment runtime enforcement engine. It is designed to answer a practical enterprise question: **what is an autonomous agent allowed to do, what happens when it crosses that boundary, and can we prove what happened?**
+WarrantKit is the buyer-facing platform layer around the AgentContainment runtime enforcement engine. It is designed to answer a practical enterprise question: **what is an autonomous agent allowed to do, what happens when it crosses that boundary, and can we prove what happened?**
 
 ## The product
 
 Autonomous agents can execute code, access data, call external services, and manage infrastructure. The operational problem is not only observing those actions; it is controlling them, responding when policy is violated, and producing evidence that the control actually operated.
 
-AgentContain is designed as a runtime security and evidence platform: define policy, establish execution identity, enforce boundaries outside the agent trust boundary, detect violations, contain and recover workloads, and produce machine-readable evidence for security operations and audit workflows.
+WarrantKit is designed as a runtime security and evidence platform: define policy, establish execution identity, enforce boundaries outside the agent trust boundary, detect violations, contain and recover workloads, and produce machine-readable evidence for security operations and audit workflows.
 
 The core workflow is:
 
@@ -24,11 +24,11 @@ For enterprise security and governance teams, this translates into:
 - **Policy traceability:** bind executions to policy identity, policy digests, and execution identity.
 - **Defense in depth:** complement existing containers, Kubernetes, gVisor, Kata, cgroups, and other isolation mechanisms.
 
-AgentContain can support security review and compliance evidence workflows, but it does not by itself make an organization compliant with SOC 2, HIPAA, or any other regulatory framework.
+WarrantKit can support security review and compliance evidence workflows, but it does not by itself make an organization compliant with SOC 2, HIPAA, or any other regulatory framework.
 
 ## Proof semantics
 
-AgentContain deliberately separates three different claims about an execution:
+WarrantKit deliberately separates three different claims about an execution:
 
 | State | What it means |
 |---|---|
@@ -47,8 +47,8 @@ The lifecycle also distinguishes **detection** from **verification**: detection 
 The platform CLI is available as `agentcontain`. The current runtime path uses the pinned AgentContainment engine, so a source checkout must include the submodule and its Python package:
 
 ```bash
-git clone --recurse-submodules https://github.com/Therealdk8890/AgentContain.git
-cd AgentContain
+git clone --recurse-submodules https://github.com/Therealdk8890/WarrantKit.git
+cd WarrantKit
 python -m pip install ./AgentContainment
 python -m pip install .
 agentcontain run --policy demo --agent-id demo-agent --contain
@@ -61,7 +61,7 @@ A dedicated no-root demonstration is available with `agentcontain demo`. It demo
 ## Architecture
 
 ```
-AgentContain
+WarrantKit
 │
 ├── Policy / Admission / Identity
 │
@@ -91,13 +91,13 @@ The platform lifecycle is:
 The current enforcement implementation lives in the companion repository:
 
 - **AgentContainment** — the runtime enforcement technology and security-critical core.
-- **AgentContain** — the broader platform that integrates enforcement, detection, recovery, proof, policy, and operational tooling.
+- **WarrantKit** — the broader platform that integrates enforcement, detection, recovery, proof, policy, and operational tooling.
 
 This repository pins the AgentContainment engine as a Git submodule so the security-critical implementation remains independently reviewable while the platform surface is developed here.
 
 ## Buyer outcomes
 
-AgentContain is being built for teams operating autonomous agents where an execution boundary, incident response path, and defensible evidence trail matter.
+WarrantKit is being built for teams operating autonomous agents where an execution boundary, incident response path, and defensible evidence trail matter.
 
 ### Core buyer workflows
 
@@ -159,7 +159,7 @@ The project intentionally distinguishes:
 
 ## Fleet governance
 
-AgentContain includes local governance primitives for managing fleets above the enforcement engine. These primitives are deliberately separate from runtime authority: governance can describe desired state, rollout progress, and fleet status without weakening or replacing local enforcement.
+WarrantKit includes local governance primitives for managing fleets above the enforcement engine. These primitives are deliberately separate from runtime authority: governance can describe desired state, rollout progress, and fleet status without weakening or replacing local enforcement.
 
 Current platform primitives include:
 
@@ -176,13 +176,13 @@ The open package provides these as **local governance primitives**. They do not 
 
 ## Commercial product boundary
 
-The open foundation is intentionally inspectable and independently usable. The commercial AgentContain platform is where centralized operations become the product: fleet-wide policy distribution, durable evidence retention, incident workflows, enterprise identity and RBAC, SIEM/SOAR integrations, deployment automation, and supported production operations.
+The open foundation is intentionally inspectable and independently usable. The commercial WarrantKit platform is where centralized operations become the product: fleet-wide policy distribution, durable evidence retention, incident workflows, enterprise identity and RBAC, SIEM/SOAR integrations, deployment automation, and supported production operations.
 
 The enforcement boundary remains local and authoritative. A hosted control plane must never be able to weaken containment because of network failure, billing state, service outage, or loss of connectivity.
 
 ## Enterprise & support
 
-AgentContain is being developed with a clear separation between the open runtime/governance foundation and future centralized enterprise capabilities.
+WarrantKit is being developed with a clear separation between the open runtime/governance foundation and future centralized enterprise capabilities.
 
 The open platform provides local fleet governance, runtime enforcement, verification, and evidence primitives. Future centralized capabilities can build above that foundation for organizations that need coordinated governance across many agents and runtimes, including areas such as:
 
@@ -199,12 +199,12 @@ The security-critical runtime remains authoritative for enforcement. Fleet gover
 ## Repository relationship
 
 ```
-AgentContain
+WarrantKit
     │
     └── AgentContainment (security-critical runtime engine)
 ```
 
-The legacy AgentContainment repository remains public and independently usable while AgentContain becomes the flagship platform repository.
+The AgentContainment repository remains public and independently usable while WarrantKit is the flagship platform repository.
 
 ## License
 
@@ -217,7 +217,7 @@ The platform includes a Linux integration proof that exercises the full local pa
 1. Create a dedicated cgroup-v2 workload boundary.
 2. Launch a real child process.
 3. Attach the child to that boundary.
-4. Bind the boundary to an AgentContain execution identity.
+4. Bind the boundary to a WarrantKit execution identity.
 5. Invoke the pinned AgentContainment cgroup provider.
 6. Independently verify the cgroup is no longer populated.
 7. Verify the workload exited.
@@ -235,7 +235,7 @@ A successful run is evidence from that tested Linux environment. It does not est
 
 ## Evidence model
 
-AgentContain exposes a transport-neutral `EvidenceEnvelope` for machine-readable execution evidence. The current v2 envelope binds execution identity, ordered events, enforcement state, verification state, proof data, optional governance scope, provenance, and an optional authenticated receipt into one canonical representation.
+WarrantKit exposes a transport-neutral `EvidenceEnvelope` for machine-readable execution evidence. The current v2 envelope binds execution identity, ordered events, enforcement state, verification state, proof data, optional governance scope, provenance, and an optional authenticated receipt into one canonical representation.
 
 The envelope validates execution identity, contiguous event sequencing, supported verification states, and receipt identity binding where present. It can be serialized to deterministic JSON for storage or transport and reconstructed offline.
 
