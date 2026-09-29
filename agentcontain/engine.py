@@ -419,7 +419,7 @@ def build_agentcontainment_engine(
     # be attached to the same controller that performs containment so a fence
     # revokes previously issued credential authority atomically with the
     # containment transition.
-    credentials = CredentialStore()
+    credentials = CredentialStore(runtime=runtime)
     if cgroup_path is None:
         controller = ContainmentController(runtime, credentials=credentials)
     else:
