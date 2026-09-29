@@ -102,6 +102,7 @@ class AgentContainmentRuntimeAdapter:
         self.controller = controller
         self.service = service
         self.service.register(agent_id, containment=controller)
+        self._credential_authority = CredentialAuthority(controller)
 
     @property
     def credential_store(self):
