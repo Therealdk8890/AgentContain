@@ -217,7 +217,7 @@ The platform includes a Linux integration proof that exercises the full local pa
 1. Create a dedicated cgroup-v2 workload boundary.
 2. Launch a real child process.
 3. Attach the child to that boundary.
-4. Bind the boundary to an WarrantKit execution identity.
+4. Bind the boundary to a WarrantKit execution identity.
 5. Invoke the pinned AgentContainment cgroup provider.
 6. Independently verify the cgroup is no longer populated.
 7. Verify the workload exited.
