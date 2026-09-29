@@ -48,3 +48,15 @@ def test_recovery_advances_execution_epoch():
     assert [e.epoch for e in machine.event_history[0].events] == [0, 0, 0, 0]
     assert [e.sequence for e in machine.event_history[0].events] == [1, 2, 3, 4]
     assert [e.sequence for e in machine.events.events] == [1]
+
+
+def test_start_new_epoch_adopts_runtime_epoch_and_archives_live_log():
+    machine = _machine()
+    machine.admit()
+
+    machine.start_new_epoch(1)
+
+    assert machine.identity.epoch == 1
+    assert [e.epoch for e in machine.event_history[0].events] == [0]
+    assert [e.sequence for e in machine.event_history[0].events] == [1]
+    assert machine.events.events == []
