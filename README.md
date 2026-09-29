@@ -36,12 +36,46 @@ The overall model is:
 
 This is a composable platform architecture, not a claim that every execution traverses every component in a single linear request path.
 
+### What happens when an agent goes outside policy?
+
+WarrantKit is designed to make an unauthorized action a runtime security event, not merely an audit event. When an agent attempts an action outside its authorized policy, the platform can deny the action and trigger a fail-closed response through the AgentContainment enforcement layer, including halting and containing the workload when termination is required.
+
+```text
+Agent requests action
+        │
+        ▼
+Is action authorized?
+   │            │
+  YES           NO
+   │            │
+   ▼            ▼
+Execute        DENY
+                │
+                ▼
+        Halt / contain agent
+                │
+                ▼
+       Revoke stale authority
+                │
+                ▼
+         Record evidence
+                │
+                ▼
+       Recovery requires
+       fresh authorization
+```
+
+The responsibilities remain separated: **WarrantKit provides policy, authorization, lifecycle, and evidence orchestration; AgentContainment performs the security-critical runtime enforcement that actually halts and contains the workload.** A policy violation therefore does not depend on the agent voluntarily stopping itself.
+
 The core workflow is:
 
 **Discover → Authorize → Enforce → Detect → Contain → Verify → Recover → Prove**
 
 For enterprise security and governance teams, this translates into:
 
+- **Action authorization:** define which actions an agent is permitted to perform and deny actions outside that policy.
+- **Violation response:** detect policy violations and trigger a fail-closed response when required.
+- **Kill / containment:** halt and contain an agent workload when an unauthorized action requires termination, preventing subsequent execution through the enforcement layer.
 - **Containment:** limit what an agent workload can do at runtime, including process and egress controls where supported.
 - **Fail-closed response:** fence and halt workloads when enforcement or recovery conditions require it.
 - **Auditability:** produce structured execution evidence and tamper-evident verification receipts.
