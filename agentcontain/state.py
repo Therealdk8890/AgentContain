@@ -82,7 +82,7 @@ class PlatformStateMachine:
     def reset_epoch(self, runtime_epoch: int) -> None:
         """Archive the current epoch and adopt the runtime-authoritative next epoch."""
         if isinstance(runtime_epoch, bool) or not isinstance(runtime_epoch, int):
-            raise RuntimeError("runtime epoch must be an integer")
+            raise TypeError("runtime epoch must be an integer")
         expected_epoch = self.identity.epoch + 1
         if runtime_epoch != expected_epoch:
             raise RuntimeError(
