@@ -138,7 +138,7 @@ def contain(admission: Admission) -> object:
     report_epoch = getattr(report, "epoch", None)
     if report_epoch is not None:
         if isinstance(report_epoch, bool) or not isinstance(report_epoch, int):
-            raise TypeError("runtime containment epoch must be an integer")
+            raise RuntimeError("runtime containment epoch must be an integer")
         expected_epoch = admission.identity.epoch + 1
         if report_epoch != expected_epoch:
             raise RuntimeError(
@@ -146,7 +146,7 @@ def contain(admission: Admission) -> object:
                 f"expected platform epoch {expected_epoch}"
             )
         # Keep epoch transition ownership inside the platform state machine.
-        admission.machine.advance_epoch(report_epoch)
+        admission.machine.reset_epoch(report_epoch)
         admission.identity = admission.machine.identity
 
     admission.machine.contain()
