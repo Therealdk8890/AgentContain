@@ -28,47 +28,60 @@ WarrantKit can support security review and compliance evidence workflows, but it
 
 ## Platform components
 
-WarrantKit is a platform made up of distinct layers with different responsibilities. The components are intentionally separated so that observation, verification, provenance, authorization, and runtime enforcement do not collapse into one trust boundary.
+WarrantKit is the platform/control plane for a broader set of security, evidence, and verification components. The repositories below are maintained separately rather than vendored into this repository. **Today, WarrantKit directly integrates the pinned AgentContainment runtime engine; the other components are companion projects and integration surfaces, not claims that all of them are currently wired into the WarrantKit runtime.**
 
-| Component | Platform role |
-|---|---|
-| **WarrantKit** | Platform/control plane — policy, admission, execution identity, lifecycle coordination, fleet governance, and evidence projection. |
-| **AgentContainment** | Security-critical runtime enforcement — fencing, containment, recovery, epoch invalidation, and host/provider enforcement. |
-| **Warden** | Observation layer — runtime visibility and operator-facing observation of agent activity and state. |
-| **ClaimProofKit** | Verification layer — evaluates whether claims or actions are supported by the required evidence. |
-| **DProvenanceKit** | Provenance and proof layer — captures reasoning/execution provenance and produces verification-oriented proof artifacts and receipts. |
-| **hermetic-sandbox** | Isolation layer — provides constrained execution environments that complement runtime enforcement. |
-| **cancelscope** | Cancellation layer — provides structured cancellation and termination control. |
-| **interleave-test** | Concurrency/regression layer — exercises deterministic interleavings and race-sensitive behavior. |
-| **pytest-flakedoctor** | Test-reliability layer — helps detect and diagnose flaky test behavior in the verification pipeline. |
+### Runtime and platform components
 
-The important boundary is **not** that WarrantKit replaces these components. WarrantKit composes them into a security and evidence platform while preserving distinct authorities.
+| Component | Role | Status in WarrantKit |
+|---|---|---|
+| **[WarrantKit](https://github.com/Therealdk8890/WarrantKit)** | Platform/control plane — policy, admission, execution identity, lifecycle coordination, fleet governance, and evidence projection. | **Current repository** |
+| **[AgentContainment](https://github.com/Therealdk8890/AgentContainment)** | Security-critical runtime enforcement — fencing, containment, recovery, epoch invalidation, and host/provider enforcement. | **Integrated today; pinned as a submodule** |
+| **[Warden](https://github.com/Therealdk8890/warden)** | Observation layer — runtime visibility and operator-facing observation of agent activity and state. | **Companion component; integration surface** |
+| **[ClaimProofKit](https://github.com/Therealdk8890/ClaimProofKit)** | Verification layer — evaluates whether claims or actions are supported by required evidence. | **Companion component; integration surface** |
+| **[DProvenanceKit](https://github.com/Therealdk8890/DProvenanceKit)** | Provenance and proof layer — captures reasoning/execution provenance and produces verification-oriented proof artifacts. | **Companion component; integration surface** |
+| **[hermetic-sandbox](https://github.com/Therealdk8890/hermetic-sandbox)** | Isolation layer — constrained execution environments that complement runtime enforcement. | **Companion component; integration surface** |
+| **[cancelscope](https://github.com/Therealdk8890/cancelscope)** | Cancellation layer — structured cancellation and termination control. | **Companion component; integration surface** |
 
-A simplified platform flow is:
+### Development and verification tooling
+
+These projects support engineering and verification of the broader stack rather than serving as runtime platform layers:
+
+- **[interleave-test](https://github.com/Therealdk8890/interleave-test)** — deterministic concurrency/interleaving tests for race-sensitive behavior.
+- **[pytest-flakedoctor](https://github.com/Therealdk8890/pytest-flakedoctor)** — tooling for detecting and diagnosing flaky pytest behavior.
+
+The important architectural boundary is that **observation, verification, provenance, authorization, and runtime enforcement do not collapse into one trust boundary**. WarrantKit provides the platform/control-plane layer, while AgentContainment remains the security-critical runtime authority for enforcement.
+
+A simplified platform relationship is:
 
 ```text
                          WarrantKit
+                    platform / control plane
                               │
-              ┌───────────────┼────────────────┐
-              │               │                │
-        Authorization     Governance       Evidence
-              │               │                │
-              ▼               ▼                ▼
-       AgentContainment     Warden       DProvenanceKit
-              │                              │
-              │                         ClaimProofKit
-              ▼                              │
-       Runtime enforcement                   │
-              │                              │
-              └──────────────┬───────────────┘
-                             ▼
-                       Audit / Operations
+                 ┌────────────┴────────────┐
+                 │                         │
+          Authorization              Governance
+                 │                         │
+                 ▼                         │
+        AgentContainment                   │
+       runtime enforcement                │
+                 │                         │
+                 └──────────────┬──────────┘
+                                │
+                       Evidence / operations
+                                │
+             ┌──────────────────┼──────────────────┐
+             │                  │                  │
+          Warden         DProvenanceKit      ClaimProofKit
+        observation       provenance/proof      verification
+
+     Companion isolation/cancellation:
+     hermetic-sandbox · cancelscope
+
+     Development/verification tooling:
+     interleave-test · pytest-flakedoctor
 ```
 
-The supporting components provide isolation, cancellation, concurrency testing, and test-reliability capabilities around that core.
-
-**The agent is never the authority for its own actions.** WarrantKit applies externally supplied policy and authorization controls; AgentContainment performs the security-critical runtime enforcement; the evidence and verification layers record and evaluate what happened.
-
+The diagram describes the **platform architecture and companion-project relationship**; it does not imply that every companion repository is currently linked as a runtime dependency of WarrantKit.
 
 ## Implementation status
 
