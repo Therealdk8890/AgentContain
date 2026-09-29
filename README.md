@@ -26,6 +26,50 @@ For enterprise security and governance teams, this translates into:
 
 WarrantKit can support security review and compliance evidence workflows, but it does not by itself make an organization compliant with SOC 2, HIPAA, or any other regulatory framework.
 
+## Platform components
+
+WarrantKit is a platform made up of distinct layers with different responsibilities. The components are intentionally separated so that observation, verification, provenance, authorization, and runtime enforcement do not collapse into one trust boundary.
+
+| Component | Platform role |
+|---|---|
+| **WarrantKit** | Platform/control plane — policy, admission, execution identity, lifecycle coordination, fleet governance, and evidence projection. |
+| **AgentContainment** | Security-critical runtime enforcement — fencing, containment, recovery, epoch invalidation, and host/provider enforcement. |
+| **Warden** | Observation layer — runtime visibility and operator-facing observation of agent activity and state. |
+| **ClaimProofKit** | Verification layer — evaluates whether claims or actions are supported by the required evidence. |
+| **DProvenanceKit** | Provenance and proof layer — captures reasoning/execution provenance and produces verification-oriented proof artifacts and receipts. |
+| **hermetic-sandbox** | Isolation layer — provides constrained execution environments that complement runtime enforcement. |
+| **cancelscope** | Cancellation layer — provides structured cancellation and termination control. |
+| **interleave-test** | Concurrency/regression layer — exercises deterministic interleavings and race-sensitive behavior. |
+| **pytest-flakedoctor** | Test-reliability layer — helps detect and diagnose flaky test behavior in the verification pipeline. |
+
+The important boundary is **not** that WarrantKit replaces these components. WarrantKit composes them into a security and evidence platform while preserving distinct authorities.
+
+A simplified platform flow is:
+
+```text
+                         WarrantKit
+                              │
+              ┌───────────────┼────────────────┐
+              │               │                │
+        Authorization     Governance       Evidence
+              │               │                │
+              ▼               ▼                ▼
+       AgentContainment     Warden       DProvenanceKit
+              │                              │
+              │                         ClaimProofKit
+              ▼                              │
+       Runtime enforcement                   │
+              │                              │
+              └──────────────┬───────────────┘
+                             ▼
+                       Audit / Operations
+```
+
+The supporting components provide isolation, cancellation, concurrency testing, and test-reliability capabilities around that core.
+
+**The agent is never the authority for its own actions.** WarrantKit applies externally supplied policy and authorization controls; AgentContainment performs the security-critical runtime enforcement; the evidence and verification layers record and evaluate what happened.
+
+
 ## Implementation status
 
 The table below distinguishes implemented platform capabilities from environment-gated proof and future product work. **Implemented** describes code present in the repository; **CI-tested** means the behavior is covered by automated CI; **Privileged integration-tested** means the proof requires a Linux host with the required kernel/cgroup privileges. A passing test is evidence for the tested environment, not a universal security guarantee.
