@@ -28,21 +28,21 @@ WarrantKit can support security review and compliance evidence workflows, but it
 
 ## Platform components
 
-WarrantKit is a platform made up of distinct layers with different responsibilities. The components are intentionally separated so that observation, verification, provenance, authorization, and runtime enforcement do not collapse into one trust boundary.
+WarrantKit is a platform built from components with distinct responsibilities and independently derived evidence. The architecture is intentionally separated so that observation, verification, provenance, authorization, and runtime enforcement do not collapse into one trust boundary or a single source of truth.
 
 | Component | Platform role |
 |---|---|
-| **WarrantKit** | Platform/control plane — policy, admission, execution identity, lifecycle coordination, fleet governance, and evidence projection. |
-| **AgentContainment** | Security-critical runtime enforcement — fencing, containment, recovery, epoch invalidation, and host/provider enforcement. |
-| **Warden** | Observation layer — runtime visibility and operator-facing observation of agent activity and state. |
-| **ClaimProofKit** | Verification layer — evaluates whether claims or actions are supported by the required evidence. |
-| **DProvenanceKit** | Provenance and proof layer — captures reasoning/execution provenance and produces verification-oriented proof artifacts and receipts. |
-| **hermetic-sandbox** | Isolation layer — provides constrained execution environments that complement runtime enforcement. |
-| **cancelscope** | Cancellation layer — provides structured cancellation and termination control. |
-| **interleave-test** | Concurrency/regression layer — exercises deterministic interleavings and race-sensitive behavior. |
-| **pytest-flakedoctor** | Test-reliability layer — helps detect and diagnose flaky test behavior in the verification pipeline. |
+| **WarrantKit** | Correlation/control layer — policy, admission, execution identity, lifecycle coordination, fleet governance, and evidence correlation. It does not become the authority over independently produced facts. |
+| **AgentContainment** | Runtime enforcement evidence — fencing, containment, recovery, epoch invalidation, and host/provider enforcement results. |
+| **Warden** | Observation evidence — independently records agent activity and runtime state at its observation boundary. |
+| **ClaimProofKit** | Verification evidence — independently evaluates whether supplied claims/actions are supported by supplied evidence under its verifier rules. |
+| **DProvenanceKit** | Provenance evidence — independently records execution/reasoning provenance and produces verification-oriented proof artifacts and receipts. |
+| **hermetic-sandbox** | Isolation support — constrained execution environments that complement runtime enforcement. |
+| **cancelscope** | Cancellation support — structured cancellation and termination control. |
+| **interleave-test** | Concurrency/regression support — deterministic interleavings and race-sensitive testing. |
+| **pytest-flakedoctor** | Development/test support — flaky-test detection and diagnosis. |
 
-The important boundary is **not** that WarrantKit replaces these components. WarrantKit composes them into a security and evidence platform while preserving distinct authorities.
+The important boundary is **not** that WarrantKit replaces these components or appoints one of them as the authority over the facts. The four core evidence sources — Warden, DProvenanceKit, ClaimProofKit, and AgentContainment — produce independently derived evidence. WarrantKit correlates that evidence by execution identity, policy identity, epoch, and evidence integrity. Agreement increases confidence; disagreement becomes an explicit evidence conflict rather than being silently resolved.
 
 A simplified platform flow is:
 
@@ -89,7 +89,7 @@ The table below distinguishes implemented platform capabilities from environment
 | Enterprise integrations | **Planned / integration-dependent** | SIEM/SOAR, identity, alerting, deployment automation, and supported production operations are not implied by the open foundation. |
 | Non-repudiable host attestation | **Planned** | Current receipts are HMAC-authenticated; stronger asymmetric/host-anchored attestation is a future trust model. |
 
-The security-critical AgentContainment engine is pinned as a submodule rather than treated as an unpinned dependency. Current WarrantKit CI validates the platform against that pinned engine revision. Provider-specific integrations remain subject to their own host, kernel, network, and deployment requirements.
+The security-critical AgentContainment engine is pinned as a submodule rather than treated as an unpinned dependency. Current WarrantKit CI validates the platform against that pinned engine revision. Warden, DProvenanceKit, and ClaimProofKit are part of the platform's evidence architecture through the cross-repo evidence contract and typed external-evidence references; they are deliberately not hard runtime dependencies. Provider-specific integrations remain subject to their own host, kernel, network, and deployment requirements.
 
 ## Proof semantics
 
@@ -153,10 +153,13 @@ The platform lifecycle is:
 
 ## Core engine
 
-The current enforcement implementation lives in the companion repository:
+The current enforcement implementation lives in the companion repository. The broader evidence architecture spans independently derived evidence sources:
 
-- **AgentContainment** — the runtime enforcement technology and security-critical core.
-- **WarrantKit** — the broader platform that integrates enforcement, detection, recovery, proof, policy, and operational tooling.
+- **AgentContainment** — the runtime enforcement technology and security-critical enforcement source.
+- **Warden** — the observation source.
+- **DProvenanceKit** — the provenance/integrity source.
+- **ClaimProofKit** — the claim/evidence verification source.
+- **WarrantKit** — the correlation and control layer that relates those independent facts without turning any one source into a universal authority.
 
 This repository pins the AgentContainment engine as a Git submodule so the security-critical implementation remains independently reviewable while the platform surface is developed here.
 
@@ -249,7 +252,7 @@ The enforcement boundary remains local and authoritative. A hosted control plane
 
 WarrantKit is being developed with a clear separation between the open runtime/governance foundation and future centralized enterprise capabilities.
 
-The open platform provides local fleet governance, runtime enforcement, verification, and evidence primitives. Future centralized capabilities can build above that foundation for organizations that need coordinated governance across many agents and runtimes, including areas such as:
+The open platform provides local fleet governance, runtime enforcement, independently derived evidence, correlation, verification, and proof primitives. Future centralized capabilities can build above that foundation for organizations that need coordinated governance across many agents and runtimes, including areas such as:
 
 - Centralized policy distribution and fleet orchestration.
 - Durable evidence storage and long-term audit history.
@@ -264,12 +267,21 @@ The security-critical runtime remains authoritative for enforcement. Fleet gover
 ## Repository relationship
 
 ```
-WarrantKit
-    │
-    └── AgentContainment (security-critical runtime engine)
+                 WarrantKit
+          correlation / control layer
+                    │
+       ┌────────────┼────────────┐
+       │            │            │
+    Warden       DPK        ClaimProofKit
+  observation  provenance    verification
+       │            │            │
+       └────────────┼────────────┘
+                    │
+             AgentContainment
+             runtime enforcement
 ```
 
-The AgentContainment repository remains public and independently usable while WarrantKit is the flagship platform repository.
+WarrantKit correlates independently derived evidence from these sources. The sources do not form a hierarchy of epistemic authority: each is responsible for facts within its own evidence boundary. Agreement is corroboration; disagreement is an evidence conflict that must remain visible. AgentContainment remains public and independently usable as the security-critical runtime enforcement engine.
 
 ## License
 
