@@ -26,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="agentcontain", description="WarrantKit runtime enforcement and proof platform for autonomous AI agents.")
     sub = parser.add_subparsers(dest="command", required=True)
     inspect = sub.add_parser("inspect", help="inspect an evidence envelope as an operator incident")
-    inspect.add_argument("--evidence-file", required=True, help="JSON evidence envelope produced by AgentContain")
+    inspect.add_argument("--evidence-file", required=True, help="JSON evidence envelope produced by WarrantKit")
     inspect.add_argument("--json", action="store_true", help="emit the complete operator view as JSON")
     demo = sub.add_parser("demo", help="run the no-root proof semantics demo")
     run = sub.add_parser("run", help="admit an execution and optionally contain it")
@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.json:
                 print(json.dumps(payload, sort_keys=True, indent=2))
             else:
-                print(f"AgentContain execution {payload['execution_id']}")
+                print(f"WarrantKit execution {payload['execution_id']}")
                 print(f"  Agent:  {payload['agent_id']}")
                 print(f"  Policy: {payload['policy_id']}")
                 print(f"  Epoch:  {payload['epoch']}")
