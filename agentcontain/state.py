@@ -79,10 +79,10 @@ class PlatformStateMachine:
     def recover(self) -> Event:
         return self.transition(LifecycleState.RECOVERING, event_name="recovery_requested")
 
-    def advance_epoch(self, runtime_epoch: int) -> None:
-        """Advance to the runtime-authoritative next epoch and reset its live log."""
+    def reset_epoch(self, runtime_epoch: int) -> None:
+        """Archive the current epoch and adopt the runtime-authoritative next epoch."""
         if isinstance(runtime_epoch, bool) or not isinstance(runtime_epoch, int):
-            raise TypeError("runtime epoch must be an integer")
+            raise RuntimeError("runtime epoch must be an integer")
         expected_epoch = self.identity.epoch + 1
         if runtime_epoch != expected_epoch:
             raise RuntimeError(
@@ -96,7 +96,7 @@ class PlatformStateMachine:
 
     def recovered(self, runtime_epoch: int) -> Event:
         """Record recovery only when the runtime-authoritative epoch advances exactly once."""
-        self.advance_epoch(runtime_epoch)
+        self.reset_epoch(runtime_epoch)
         return self.transition(
             LifecycleState.RECOVERED,
             event_name="runtime_recovery_complete",
