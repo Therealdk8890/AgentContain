@@ -145,7 +145,7 @@ def contain(admission: Admission) -> object:
                 f"runtime containment epoch {report_epoch} does not match "
                 f"expected platform epoch {expected_epoch}"
             )
-        # Rotate the platform state machine through its public epoch boundary.
+        # Keep epoch transition ownership inside the platform state machine.
         admission.machine.start_new_epoch(report_epoch)
         admission.identity = admission.machine.identity
 

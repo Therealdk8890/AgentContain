@@ -80,7 +80,7 @@ class PlatformStateMachine:
         return self.transition(LifecycleState.RECOVERING, event_name="recovery_requested")
 
     def start_new_epoch(self, runtime_epoch: int) -> None:
-        """Adopt an authoritative next epoch and rotate the live event log."""
+        """Archive the current epoch and adopt the runtime-authoritative next epoch."""
         if isinstance(runtime_epoch, bool) or not isinstance(runtime_epoch, int):
             raise TypeError("runtime epoch must be an integer")
         expected_epoch = self.identity.epoch + 1
