@@ -12,6 +12,30 @@ Autonomous agents can execute code, access data, call external services, and man
 
 WarrantKit is designed as a runtime security and evidence platform: define policy, establish execution identity, enforce boundaries outside the agent trust boundary, detect violations, contain and recover workloads, and produce machine-readable evidence for security operations and audit workflows.
 
+### Platform architecture
+
+WarrantKit is the platform layer that composes a set of independently reviewable capabilities rather than a single enforcement implementation. The platform separates observation, provenance, claim verification, authorization, runtime enforcement, isolation, cancellation, and verification/regression tooling so that no component has to impersonate another component's authority.
+
+| Capability | Component | Role |
+|---|---|---|
+| **Observe** | **Warden** | Operator-facing observation and visibility into the execution and governance chain. |
+| **Prove / audit** | **DProvenanceKit** | Provenance, traceability, attestation, and reconstruction of execution/decision state. |
+| **Verify claims** | **ClaimProofKit** | Determines whether claims or actions are supported by the required evidence. |
+| **Authorize / govern** | **WarrantKit** | Policy, admission, execution identity, lifecycle, fleet governance, and authorization state. |
+| **Enforce / contain** | **AgentContainment** | Security-critical runtime enforcement, fencing, containment, recovery, and external enforcement integration. |
+| **Isolate** | **hermetic-sandbox** | Sandbox/isolation boundary used where workload execution requires stronger environmental separation. |
+| **Cancel** | **cancelscope** | Cancellation and termination control used as part of bounded execution. |
+| **Test reliability** | **pytest-flakedoctor** | Flaky-test diagnosis and CI/test reliability support. |
+| **Concurrency testing** | **interleave-test** | Interleaving and concurrency-oriented regression testing. |
+
+The important boundary is that **WarrantKit is the platform; AgentContainment is its security-critical runtime enforcement engine**. The other components provide complementary capabilities around that boundary. They are not interchangeable authorities, and the platform does not treat an observation, provenance record, claim verification result, or receipt as a substitute for runtime enforcement.
+
+The overall model is:
+
+**Observe → Prove → Verify → Authorize → Enforce → Contain → Recover → Regression**
+
+This is a composable platform architecture, not a claim that every execution traverses every component in a single linear request path.
+
 The core workflow is:
 
 **Discover → Authorize → Enforce → Detect → Contain → Verify → Recover → Prove**
@@ -60,40 +84,51 @@ A dedicated no-root demonstration is available with `agentcontain demo`. It demo
 
 ## Architecture
 
-```
-WarrantKit
-│
-├── Policy / Admission / Identity
-│
-├── AgentContainment
-│   ├── Admission
-│   ├── Fencing
-│   ├── Runtime enforcement
-│   ├── Cgroup containment
-│   └── Egress enforcement
-│
-├── Detection
-├── Recovery
-│   └── Fail-closed recovery
-│
-└── Proof
-    ├── Adversarial evidence
-    ├── Structured proof
-    └── Verification receipts
+```text
+                         WarrantKit
+                    AI Agent Control Plane
+                              │
+       ┌──────────────┬───────┼────────┬──────────────┐
+       │              │       │        │              │
+    Observe         Prove   Verify  Authorize      Enforce
+       │              │       │        │              │
+    Warden      DProvenance  Claim   WarrantKit   AgentContainment
+                    Kit       ProofKit
+       │              │       │        │              │
+       └──────────────┴───────┴────────┴──────┬───────┘
+                                             │
+                                  Runtime boundary
+                                             │
+                              ┌──────────────┴─────────────┐
+                              │                            │
+                       hermetic-sandbox              cancelscope
+                              │
+                         bounded execution
+
+       Verification / regression infrastructure:
+              pytest-flakedoctor
+              interleave-test
 ```
 
 The platform lifecycle is:
 
-**Policy → Admit → Contain → Detect → Fence → Halt → Verify → Recover → Receipt**
+**Policy → Admit → Authorize → Enforce → Detect → Contain → Verify → Recover → Prove → Regress**
+
+The diagram describes architectural responsibilities, not a mandatory linear runtime path. Components can be used independently where appropriate, while WarrantKit provides the platform-level composition and governance boundary.
 
 ## Core engine
 
 The current enforcement implementation lives in the companion repository:
 
 - **AgentContainment** — the runtime enforcement technology and security-critical core.
-- **WarrantKit** — the broader platform that integrates enforcement, detection, recovery, proof, policy, and operational tooling.
+- **WarrantKit** — the platform that integrates policy, authorization, enforcement, detection, containment, recovery, proof, evidence, and operational tooling.
+- **DProvenanceKit** — provenance and attestation capability for reconstructing and auditing execution and decision state.
+- **ClaimProofKit** — claim/evidence verification capability used to distinguish supported claims from merely observed events.
+- **Warden** — operator-facing observation and visibility across the platform evidence chain.
+- **hermetic-sandbox** and **cancelscope** — complementary runtime-boundary capabilities for isolation and cancellation.
+- **pytest-flakedoctor** and **interleave-test** — supporting test and regression infrastructure for reliability and concurrency coverage.
 
-This repository pins the AgentContainment engine as a Git submodule so the security-critical implementation remains independently reviewable while the platform surface is developed here.
+This repository pins the AgentContainment engine as a Git submodule so the security-critical implementation remains independently reviewable while the platform surface is developed here. The other components remain separate capabilities rather than being collapsed into the WarrantKit enforcement boundary.
 
 ## Buyer outcomes
 
@@ -198,11 +233,19 @@ The security-critical runtime remains authoritative for enforcement. Fleet gover
 
 ## Repository relationship
 
+```text
+WarrantKit (platform)
+├── AgentContainment       security-critical runtime enforcement
+├── DProvenanceKit         provenance / proof / attestation
+├── ClaimProofKit          claim and evidence verification
+├── Warden                 observation / operator visibility
+├── hermetic-sandbox       isolation boundary
+├── cancelscope            cancellation / termination control
+├── pytest-flakedoctor     test reliability / flaky-test diagnosis
+└── interleave-test        concurrency / interleaving regression testing
 ```
-WarrantKit
-    │
-    └── AgentContainment (security-critical runtime engine)
-```
+
+These components are intentionally separate projects with distinct responsibilities. WarrantKit composes them at the platform boundary; it does not turn them into one monolithic implementation or assume their authority is interchangeable.
 
 The AgentContainment repository remains public and independently usable while WarrantKit is the flagship platform repository.
 
