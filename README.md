@@ -28,7 +28,7 @@ WarrantKit is the platform layer that composes a set of independently reviewable
 | **Test reliability** | **pytest-flakedoctor** | Flaky-test diagnosis and CI/test reliability support. |
 | **Concurrency testing** | **interleave-test** | Interleaving and concurrency-oriented regression testing. |
 
-The important boundary is that **WarrantKit is the platform; AgentContainment is its security-critical runtime enforcement engine**. The other components provide complementary capabilities around that boundary. They are not interchangeable authorities, and the platform does not treat an observation, provenance record, claim verification result, or receipt as a substitute for runtime enforcement.
+The important boundary is that **WarrantKit is the platform; AgentContainment is its security-critical runtime enforcement engine**. The other components provide complementary capabilities around that boundary. **The layers themselves do not become autonomous decision-makers:** they observe, evaluate against supplied policy or verification criteria, enforce the resulting control path, and report what occurred. No layer should invent authority, silently change policy, or treat its own observation as permission to act. Authority comes from the explicit policy and control inputs governing the execution, while the platform preserves the resulting evidence and state.
 
 The overall model is:
 
@@ -65,7 +65,7 @@ Execute        DENY
        fresh authorization
 ```
 
-The responsibilities remain separated: **WarrantKit provides policy, authorization, lifecycle, and evidence orchestration; AgentContainment performs the security-critical runtime enforcement that actually halts and contains the workload.** A policy violation therefore does not depend on the agent voluntarily stopping itself.
+The responsibilities remain separated: **WarrantKit provides policy, authorization, lifecycle, and evidence orchestration; AgentContainment performs the security-critical runtime enforcement that actually halts and contains the workload.** These components do not independently decide what an agent *should* be allowed to do; they apply the supplied policy/control inputs and report the resulting decision, action, and evidence. A policy violation therefore does not depend on the agent voluntarily stopping itself.
 
 The core workflow is:
 
@@ -239,7 +239,7 @@ Current platform primitives include:
 - **Fleet policy status** as a stable machine-readable aggregate.
 - **Immutable status history** with monotonic snapshots, collision detection, and idempotent append behavior.
 
-The design intentionally keeps rollout and fleet observation from becoming enforcement authority. Local runtimes remain authoritative for accepting and enforcing policy.
+The design intentionally keeps rollout and fleet observation from becoming autonomous enforcement authority. Policy and control inputs define what is authorized; the platform layers observe, apply, enforce, and report without inventing new authority of their own. Local runtimes remain authoritative for executing the supplied enforcement controls.
 
 The open package provides these as **local governance primitives**. They do not constitute a hosted multi-tenant control plane, server-side RBAC system, or centralized enforcement authority.
 
