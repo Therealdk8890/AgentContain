@@ -39,6 +39,46 @@ class EnforcementEngine(Protocol):
     def contain(self) -> ContainmentResult: ...
 
 
+class CredentialAuthority:
+    """Runtime-scoped facade over the controller-owned credential leases.
+
+    Credential issuance and modeled credential use are execution authority, so
+    the platform must not expose the raw store while the runtime is contained
+    or halted. Existing leases remain queryable for revocation/audit checks.
+    """
+
+    def __init__(self, controller) -> None:
+        self._controller = controller
+
+    @property
+    def _store(self):
+        store = getattr(self._controller, "credentials", None)
+        if store is None:
+            raise RuntimeError("runtime has no credential lease store")
+        return store
+
+    @property
+    def _active(self) -> bool:
+        state = getattr(getattr(self._controller, "runtime", None), "state", None)
+        return getattr(state, "value", state) == "active"
+
+    def issue(self, credential_id: str):
+        if not self._active:
+            raise RuntimeError("credential issuance requires an active runtime")
+        return self._store.issue(credential_id)
+
+    def valid(self, lease) -> bool:
+        return self._store.valid(lease)
+
+    def execute_if_valid(self, lease, executor):
+        if not self._active:
+            return None
+        return self._store.execute_if_valid(lease, executor)
+
+    def revoke(self, credential_id: str) -> None:
+        self._store.revoke(credential_id)
+
+
 @dataclass
 class Admission:
     """Authoritative platform admission result."""
@@ -62,6 +102,7 @@ class AgentContainmentRuntimeAdapter:
         self.controller = controller
         self.service = service
         self.service.register(agent_id, containment=controller)
+        self._credential_authority = CredentialAuthority(controller)
 
     @property
     def credential_store(self):
@@ -71,7 +112,7 @@ class AgentContainmentRuntimeAdapter:
         This exposes the existing AgentContainment reference-model boundary to
         WarrantKit without making WarrantKit the credential provider.
         """
-        return getattr(self.controller, "credentials", None)
+        return self._credential_authority
 
     @property
     def last_report(self):
