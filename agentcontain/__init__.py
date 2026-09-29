@@ -1,4 +1,4 @@
-"""AgentContain platform primitives.
+"""WarrantKit platform primitives.
 
 The platform layer defines policy, execution identity, lifecycle state, structured
 events, and transport-neutral evidence around the AgentContainment engine.
