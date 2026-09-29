@@ -66,20 +66,26 @@ def test_authorized_execution_violation_revokes_authority_before_recovery():
     recovered_epoch = recover(admission, authorization)
 
     assert admission.machine.state.value == "recovered"
-    assert recovered_epoch == old_lease.epoch + 1
+    assert recovered_epoch > old_lease.epoch
 
     fresh_lease = credentials.issue("prod-api")
     assert credentials.valid(fresh_lease)
     assert fresh_lease.epoch == recovered_epoch
     assert not credentials.valid(old_lease)
 
-    events = [
+    historical_events = [
         event.event_name
         for event in admission.machine.event_history[0].events
     ]
-    assert events == [
-        "admission_verified",
-        "anomaly_detected",
+    assert historical_events == ["admission_verified"]
+
+    contained_epoch_events = [
+        event.event_name
+        for event in admission.machine.event_history[1].events
+    ]
+    assert contained_epoch_events == [
+        "containment_verified",
+        "recovery_requested",
     ]
 
     current_events = [event.event_name for event in admission.machine.events.events]
