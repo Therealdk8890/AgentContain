@@ -43,6 +43,40 @@ def test_admission_binds_policy_and_engine():
     assert admission.machine.state.value == "admitted"
 
 
+def test_runtime_epoch_reset_archives_prior_epoch_and_restarts_sequence():
+    engine = RuntimeProofEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+
+    contain(admission)
+
+    assert admission.identity.epoch == 1
+    assert admission.machine.events.events[-1].epoch == 1
+    assert admission.machine.events.events[-1].sequence == 1
+    assert len(admission.machine.event_history) == 1
+    assert admission.machine.event_history[0].events[-1].epoch == 0
+    assert admission.machine.event_history[0].events[-1].sequence == 1
+
+
+def test_runtime_epoch_must_be_an_integer():
+    class MalformedEpochEngine(FakeEngine):
+        def contain(self):
+            self.calls += 1
+            self.last_report = type("MalformedReport", (), {"complete": True, "epoch": "1"})()
+            return self.last_report
+
+    admission = admit(
+        Policy("production"),
+        agent_id="agent-1",
+        engine=MalformedEpochEngine(),
+    )
+
+    with pytest.raises(TypeError, match="epoch must be an integer"):
+        contain(admission)
+
+    assert admission.identity.epoch == 0
+    assert admission.machine.state.value == "admitted"
+
+
 def test_containment_calls_engine_before_recording_platform_state():
     engine = FakeEngine()
     admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
