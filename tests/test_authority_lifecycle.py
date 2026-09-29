@@ -77,7 +77,7 @@ def test_authorized_execution_violation_revokes_authority_before_recovery():
         event.name
         for event in admission.machine.event_history[0].events
     ]
-    assert historical_events == ["admission_verified"]
+    assert historical_events == ["admission_verified", "anomaly_detected"]
 
     contained_epoch_events = [
         event.name
