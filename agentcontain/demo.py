@@ -40,7 +40,7 @@ def _issue_receipt(evidence: EvidenceEnvelope) -> dict[str, Any]:
             "independently_verified": False,
             "mode": "simulated",
         },
-        "proof_status": "verified",
+        "proof_status": "observed",
     }
     digest = hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
     signature = hmac.new(_DEMO_KEY, digest.encode("ascii"), hashlib.sha256).hexdigest()
@@ -80,7 +80,7 @@ def run_demo() -> int:
         execution=base.execution,
         events=base.events,
         enforcement={"complete": True, "mode": "simulated", "external_enforcement": False},
-        verification={"status": "verified", "method": "agentcontain-no-root-demo"},
+        verification={"status": "observed", "method": "agentcontain-no-root-demo"},
         proof={"simulated": True, "host_enforcement_verified": False},
         provenance={"producer": "agentcontain-demo"},
     )
@@ -113,7 +113,7 @@ def run_demo() -> int:
     print()
     print("Proof")
     print("  Evidence:    OBSERVED")
-    print("  Verification: VERIFIED")
+    print("  Verification: NOT CLAIMED (simulated)")
     print("  Receipt:     AUTHENTICATED")
     print(f"  Receipt ID:  {view.receipt_id}")
     print()
