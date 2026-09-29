@@ -2,7 +2,17 @@
 
 ## Security boundary
 
-WarrantKit is a runtime security and evidence platform for autonomous AI agents. Its security model deliberately separates policy/control, observation, provenance, claim/evidence verification, and runtime enforcement.
+WarrantKit is a runtime security platform for autonomous AI agents with two tightly coupled responsibilities: **enforcing the agent's authority boundary** and **producing independently derived evidence that establishes what happened**.
+
+The enforcement model is explicit:
+
+1. Establish the agent's identity, policy, execution identity, and authority scope.
+2. Enforce that authority outside the agent trust boundary.
+3. When an action violates policy or authority conditions, deny it and, when required, revoke the associated authority or credential/capability use.
+4. Halt or contain the workload through the runtime enforcement layer.
+5. Prevent stale authority from surviving an epoch transition or recovery boundary.
+6. Require fresh authorization before recovery.
+7. Correlate independent evidence to determine whether the security boundary actually held.
 
 The core evidence architecture uses independently derived evidence from:
 
@@ -14,6 +24,22 @@ The core evidence architecture uses independently derived evidence from:
 WarrantKit correlates these facts by execution identity, policy identity, epoch, and evidence integrity. It does not treat one subsystem as a universal authority over the facts. Agreement is corroboration; disagreement must remain distinguishable as an evidence conflict.
 
 The agent is never trusted to enforce its own security boundary.
+
+## Authority revocation and containment
+
+Authority is treated as a lifecycle, not a static permission attached to an agent.
+
+WarrantKit is designed to make policy violations operationally consequential:
+
+- unauthorized actions can be denied;
+- stale or violated execution authority can be invalidated;
+- associated credential/secret or capability use can be revoked or rendered invalid;
+- workloads can be halted or contained through the AgentContainment runtime;
+- recovery is gated on the required verification and a fresh authority epoch.
+
+The purpose is not merely to record that an agent violated policy. The security boundary must prevent the agent from continuing to operate with authority it no longer satisfies the conditions to hold.
+
+The evidence architecture is separate from this enforcement boundary. It does not grant runtime authority and cannot be used to override a containment decision.
 
 ## What the project does not claim
 
@@ -30,7 +56,7 @@ Privileged Linux integration tests exercise the tested kernel, cgroup, network, 
 
 ## Runtime enforcement
 
-The security-critical runtime enforcement engine is **AgentContainment**, pinned as a Git submodule. WarrantKit's platform state and evidence layers do not replace that runtime enforcement boundary.
+The security-critical runtime enforcement engine is **AgentContainment**, pinned as a Git submodule. WarrantKit's authorization and lifecycle controls drive that enforcement boundary; the platform's evidence layer does not replace it.
 
 External evidence integrations must not be used to:
 
@@ -38,10 +64,10 @@ External evidence integrations must not be used to:
 - weaken policy;
 - release containment;
 - extend an authority epoch;
-- restore credentials;
+- restore revoked credentials or secrets;
 - mark unverified runtime enforcement as verified.
 
-Evidence integrations may add context or independently verifiable references.
+Evidence integrations may add context or independently verifiable references, but they cannot override enforcement or resurrect authority that has been revoked.
 
 ## Supported environments
 
@@ -69,11 +95,12 @@ We will acknowledge reports as promptly as practical, investigate the reported b
 
 Security reports are especially relevant to:
 
+- authorization/admission boundaries;
+- authority and credential/secret revocation;
 - runtime containment and fencing;
 - epoch and stale-authority invalidation;
 - recovery and fail-closed behavior;
 - evidence integrity and identity binding;
-- authorization/admission boundaries;
 - privileged host enforcement integrations;
 - cross-component evidence handling that could incorrectly turn evidence into runtime authority.
 
