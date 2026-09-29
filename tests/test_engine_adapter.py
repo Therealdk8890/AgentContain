@@ -386,3 +386,49 @@ def test_recovery_rejects_runtime_epoch_divergence():
 
     assert admission.machine.state.value == "recovering"
     assert admission.identity.epoch == 0
+
+
+def test_authoritative_epoch_chain_spans_containment_recovery_and_evidence():
+    class EpochEngine(RuntimeProofEngine):
+        def issue_recovery_authorization(self):
+            return object()
+
+        def recover(self, authorization):
+            assert authorization is not None
+            return 2
+
+    engine = EpochEngine()
+    admission = admit(Policy("production"), agent_id="agent-1", engine=engine)
+
+    contain(admission)
+    assert admission.identity.epoch == 1
+    assert admission.machine.events.events[-1].epoch == 1
+    assert admission.machine.events.events[-1].sequence == 1
+
+    verify(admission)
+
+    authorization = issue_recovery_authorization(admission)
+    assert recover(admission, authorization) == 2
+
+    assert admission.identity.epoch == 2
+    assert admission.machine.identity.epoch == 2
+    assert len(admission.machine.event_history) == 2
+    assert [event.epoch for event in admission.machine.event_history[0].events] == [0]
+    assert [event.epoch for event in admission.machine.event_history[1].events] == [1, 1, 1]
+    assert [event.sequence for event in admission.machine.event_history[1].events] == [1, 2, 3]
+    assert [event.epoch for event in admission.machine.events.events] == [2]
+    assert [event.sequence for event in admission.machine.events.events] == [1]
+
+    with pytest.raises(RuntimeError, match="runtime verification report is unavailable"):
+        verify(admission)
+
+    evidence = evidence_envelope(admission)
+    assert evidence.execution["epoch"] == 2
+    assert [event["epoch"] for event in evidence.events] == [2]
+    assert [event["sequence"] for event in evidence.events] == [1]
+    assert evidence.verification == {
+        "status": "observed",
+        "method": "agentcontain-platform-events",
+        "reason": "runtime-report-epoch-mismatch",
+    }
+    assert evidence.proof == {}
