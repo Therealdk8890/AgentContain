@@ -1,5 +1,7 @@
 # WarrantKit
 
+[![WarrantKit CI](https://github.com/Therealdk8890/WarrantKit/actions/workflows/ci.yml/badge.svg)](https://github.com/Therealdk8890/WarrantKit/actions/workflows/ci.yml)
+
 **Runtime security and evidence platform for autonomous AI agents.**
 
 > **Don't ask the agent to enforce its own boundaries. Enforce them from outside the agent trust boundary.**
@@ -272,7 +274,7 @@ The security-critical runtime remains authoritative for enforcement. Fleet gover
                     │
        ┌────────────┼────────────┐
        │            │            │
-    Warden       DPK        ClaimProofKit
+    Warden   DProvenanceKit  ClaimProofKit
   observation  provenance    verification
        │            │            │
        └────────────┼────────────┘
