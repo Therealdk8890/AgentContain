@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--egress", action="append", default=[], help="allowed egress target")
     run.add_argument("--cgroup-path", help="existing Linux cgroup-v2 path for this workload")
     run.add_argument("--receipt-secret-file", help="read the HMAC receipt secret from a file instead of exposing it in argv")
-    run.add_argument("--receipt-secret-env", default="AGENTCONTAIN_RECEIPT_SECRET", help="environment variable containing the HMAC receipt secret")
+    run.add_argument("--receipt-secret-env", default="WARRANTKIT_RECEIPT_SECRET", help="environment variable containing the HMAC receipt secret")
     run.add_argument("--evidence-output", help="write the complete evidence envelope to this JSON file")
     run.add_argument("--contain", action="store_true", help="invoke external containment immediately after admission")
     run.add_argument("--json", action="store_true", help="emit machine-readable execution state")
