@@ -246,6 +246,7 @@ def verify(admission: Admission, *, runtime_binding: dict | None = None):
         validate_runtime_pinned_binding(runtime_binding, {
             "agent_id": identity.agent_id,
             "epoch": identity.epoch,
+            **({"runtime_id": identity.runtime_id} if identity.runtime_id is not None else {}),
         })
     return admission.machine.verify()
 
