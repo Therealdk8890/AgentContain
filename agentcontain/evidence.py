@@ -18,6 +18,64 @@ def canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
+def validate_runtime_pinned_binding(
+    binding: Mapping[str, Any],
+    execution: Mapping[str, Any],
+) -> None:
+    """Fail closed unless independent runtime records share one epoch."""
+    import re
+    from datetime import datetime
+
+    if not isinstance(binding, Mapping):
+        raise TypeError("runtime binding must be a mapping")
+    required = {"schema_version", "runtime_id", "agent_id", "epoch", "authority", "enforcement", "observation"}
+    if set(binding) != required:
+        raise ValueError("runtime binding has an invalid shape")
+    if binding["schema_version"] != "agentcontain.runtime-binding/v1":
+        raise ValueError("unsupported runtime binding schema")
+    if not isinstance(binding["runtime_id"], str) or not binding["runtime_id"].strip():
+        raise ValueError("runtime binding runtime_id must not be empty")
+    if binding["agent_id"] != execution["agent_id"]:
+        raise ValueError("runtime binding agent_id does not match execution")
+    expected_runtime_id = execution.get("runtime_id")
+    if expected_runtime_id is not None and binding["runtime_id"] != expected_runtime_id:
+        raise ValueError("runtime binding runtime_id does not match execution")
+    if binding["epoch"] != execution["epoch"]:
+        raise ValueError("runtime binding epoch does not match execution")
+    if isinstance(binding["epoch"], bool) or not isinstance(binding["epoch"], int) or binding["epoch"] < 1:
+        raise ValueError("runtime binding epoch must be a positive integer")
+
+    authority, enforcement, observation = binding["authority"], binding["enforcement"], binding["observation"]
+    if not all(isinstance(item, Mapping) for item in (authority, enforcement, observation)):
+        raise TypeError("runtime binding authority, enforcement, and observation must be mappings")
+    digest_re = re.compile(r"^sha256:[0-9a-f]{64}$")
+    for label, item in (("authority", authority), ("enforcement", enforcement), ("observation", observation)):
+        if not isinstance(item.get("digest"), str) or not digest_re.fullmatch(item["digest"]):
+            raise ValueError(f"runtime binding {label} digest is invalid")
+    if authority.get("revoked") is not True:
+        raise ValueError("runtime binding requires explicit authority revocation evidence")
+    if enforcement.get("action") not in {"KILL", "FENCE"}:
+        raise ValueError("runtime binding enforcement action must be KILL or FENCE")
+    if enforcement.get("external_boundary") is not True:
+        raise ValueError("runtime binding enforcement must be external to the agent")
+    if observation.get("state") not in {"TERMINATED", "FENCED"}:
+        raise ValueError("runtime binding observation state must be TERMINATED or FENCED")
+
+    times = []
+    for label, item, key in (("authority", authority, "revoked_at"), ("enforcement", enforcement, "occurred_at"), ("observation", observation, "observed_at")):
+        value = item.get(key)
+        if not isinstance(value, str):
+            raise ValueError(f"runtime binding {label} {key} is required")
+        try:
+            times.append(datetime.fromisoformat(value.replace("Z", "+00:00")))
+        except ValueError as exc:
+            raise ValueError(f"runtime binding {label} {key} is not ISO-8601") from exc
+    if times[1] < times[0]:
+        raise ValueError("runtime binding enforcement predates authority revocation")
+    if times[2] < times[1]:
+        raise ValueError("runtime binding observation predates enforcement")
+
+
 @dataclass(frozen=True)
 class EvidenceEnvelope:
     """Machine-readable evidence for one AgentContain execution."""
