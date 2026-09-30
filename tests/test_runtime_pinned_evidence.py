@@ -144,3 +144,24 @@ def test_verify_path_accepts_runtime_pinned_second_evidence():
     contain(admission)
     verify(admission, runtime_binding=_binding())
     assert admission.machine.state.value == "verified"
+
+
+def test_tampered_serialized_runtime_binding_fails_closed():
+    admission = _admission()
+    contain(admission)
+    envelope = EvidenceEnvelope.from_execution(
+        execution={
+            "execution_id": admission.identity.execution_id,
+            "agent_id": admission.identity.agent_id,
+            "policy_id": admission.identity.policy_id,
+            "policy_digest": admission.identity.policy_digest,
+            "epoch": 1,
+            "runtime_id": admission.identity.runtime_id,
+        },
+        events=({"execution_id": admission.identity.execution_id, "sequence": 1, "name": "containment_verified", "epoch": 1},),
+    ).with_runtime_pinned_evidence(_binding())
+    document = envelope.to_dict()
+    document["proof"]["runtime_binding"]["epoch"] = 0
+
+    with pytest.raises(ValueError, match="runtime binding epoch"):
+        EvidenceEnvelope.from_dict(document)
