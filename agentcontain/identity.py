@@ -33,6 +33,7 @@ class ExecutionIdentity:
             policy_id=policy_id,
             policy_digest=policy_digest,
             epoch=epoch,
+            runtime_id=runtime_id,
         )
 
     def advance_epoch(self) -> "ExecutionIdentity":
