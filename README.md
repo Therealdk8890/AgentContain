@@ -136,6 +136,8 @@ The lifecycle also distinguishes **detection** from **verification**: detection 
 
 ## Current quick start
 
+The project is **WarrantKit**; the CLI/package name remains **`agentcontain`** for compatibility with the existing runtime surface.
+
 The platform CLI is available as `agentcontain`.
 
 ### 1. Simulated demonstration — no host privileges
@@ -166,7 +168,7 @@ The real path may require Linux, cgroup-v2 support, and the privileges/delegatio
 
 The primary threat model is an autonomous agent that must be treated as untrusted. WarrantKit therefore keeps authorization, revocation, containment, and recovery outside the agent trust boundary and delegates security-critical runtime enforcement to AgentContainment.
 
-The current threat model and security contract are documented in [`docs/SECURITY_CONTRACT.md`](https://github.com/Therealdk8890/AgentContainment/blob/main/docs/SECURITY_CONTRACT.md). In particular, the project distinguishes controls that are implemented and tested from assumptions about the host, kernel, cgroup hierarchy, runtime, and external enforcement providers.
+The platform threat model is documented in [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md). The lower-level AgentContainment security contract is documented in [`AgentContainment/docs/SECURITY_CONTRACT.md`](https://github.com/Therealdk8890/AgentContainment/blob/main/docs/SECURITY_CONTRACT.md). In particular, the project distinguishes controls that are implemented and tested from assumptions about the host, kernel, cgroup hierarchy, runtime, and external enforcement providers.
 
 ### Current non-goals
 
