@@ -6,7 +6,7 @@
 
 > **Don't ask the agent to enforce its own boundaries. Enforce them from outside the agent trust boundary.**
 
-WarrantKit is the buyer-facing runtime security platform around the AgentContainment enforcement engine. It answers a practical enterprise question: **what is an autonomous agent allowed to do, what happens when it crosses that boundary, how do we revoke its authority, and can we prove that the security boundary held?**
+WarrantKit is the runtime security platform around the AgentContainment enforcement engine. It answers a practical security question: **what is an autonomous agent allowed to do, what happens when it crosses that boundary, how do we revoke its authority, and can we prove that the security boundary held?**
 
 ## The product
 
@@ -74,6 +74,29 @@ The supporting components provide isolation, cancellation, concurrency testing, 
 **The agent is never the authority for its own actions.** WarrantKit applies externally supplied policy and authorization controls; AgentContainment performs the security-critical runtime enforcement; the evidence and verification layers record and evaluate what happened.
 
 
+## Real workload proof
+
+The platform includes a Linux integration proof that exercises the full local path against a real workload:
+
+1. Create a dedicated cgroup-v2 workload boundary.
+2. Launch a real child process.
+3. Attach the child to that boundary.
+4. Bind the boundary to a WarrantKit execution identity.
+5. Invoke the pinned AgentContainment cgroup provider.
+6. Independently verify the cgroup is no longer populated.
+7. Verify the workload exited.
+8. Bind the resulting containment evidence to an authenticated proof receipt.
+9. Verify that receipt with an offline verifier.
+
+The proof is deliberately environment-gated because it requires Linux cgroup v2 and appropriate host privileges/delegation:
+
+```bash
+AGENT_CONTAIN_RUN_REAL_CGROUP=1 pytest -q tests/integration/test_real_cgroup_execution.py
+```
+
+A successful run is evidence from that tested Linux environment. It does not establish a universal host-security claim. The receipt is HMAC-authenticated and tamper-evident; it is not a non-repudiable attestation.
+
+
 ## Implementation status
 
 The table below distinguishes implemented platform capabilities from environment-gated proof and future product work. **Implemented** describes code present in the repository; **CI-tested** means the behavior is covered by automated CI; **Privileged integration-tested** means the proof requires a Linux host with the required kernel/cgroup privileges. A passing test is evidence for the tested environment, not a universal security guarantee.
@@ -113,19 +136,49 @@ The lifecycle also distinguishes **detection** from **verification**: detection 
 
 ## Current quick start
 
-The platform CLI is available as `agentcontain`. The current runtime path uses the pinned AgentContainment engine, so a source checkout must include the submodule and its Python package:
+The platform CLI is available as `agentcontain`.
+
+### 1. Simulated demonstration — no host privileges
+
+Start with the no-root path:
 
 ```bash
 git clone --recurse-submodules https://github.com/Therealdk8890/WarrantKit.git
 cd WarrantKit
 python -m pip install ./AgentContainment
 python -m pip install .
+agentcontain demo
+```
+
+This demonstrates the lifecycle, evidence envelope, and receipt semantics without host privileges. It is explicitly **simulated** and must not be interpreted as kernel-level containment proof.
+
+### 2. Real runtime path — Linux
+
+The real runtime adapter uses the pinned AgentContainment engine:
+
+```bash
 agentcontain run --policy demo --agent-id demo-agent --contain
 ```
 
-This exercises the real runtime adapter and may require a Linux environment with the privileges and cgroup setup required by the selected enforcement path. It is not the no-root demonstration path.
+The real path may require Linux, cgroup-v2 support, and the privileges/delegation required by the selected enforcement provider. The host-boundary proof above is the stronger path to use when evaluating actual workload containment.
 
-A dedicated no-root demonstration is available with `agentcontain demo`. It demonstrates the lifecycle, evidence envelope, and receipt semantics without host privileges. It is explicitly **simulated** and must not be interpreted as kernel-level containment proof.
+## Threat model and non-goals
+
+The primary threat model is an autonomous agent that must be treated as untrusted. WarrantKit therefore keeps authorization, revocation, containment, and recovery outside the agent trust boundary and delegates security-critical runtime enforcement to AgentContainment.
+
+The current threat model and security contract are documented in [`docs/SECURITY_CONTRACT.md`](https://github.com/Therealdk8890/AgentContainment/blob/main/docs/SECURITY_CONTRACT.md). In particular, the project distinguishes controls that are implemented and tested from assumptions about the host, kernel, cgroup hierarchy, runtime, and external enforcement providers.
+
+### Current non-goals
+
+- **Not a universal host-isolation guarantee.** The real workload proof covers the tested Linux environment; it does not establish security properties for every kernel, container runtime, namespace, or deployment topology.
+- **Not agent-cooperative containment.** Telling an agent to stop is not treated as enforcement evidence.
+- **Not reversal of completed side effects.** Revocation and containment prevent further authority where the enforcement boundary permits; they cannot undo effects that already escaped the boundary.
+- **Not a secret manager.** The current credential primitive models runtime-scoped revocable authority; it does not automatically revoke arbitrary third-party cloud/API credentials.
+- **Not formal verification or host attestation.** Passing the tests demonstrates the tested behavior and assumptions; HMAC receipts provide authentication/tamper evidence, not non-repudiation.
+
+### Open boundary: controller isolation
+
+Controller isolation remains deployment-sensitive. The repository tests selected controller/agent IPC and host attack paths, but the controller, its IPC endpoint, the cgroup hierarchy, and the privileges used to enforce containment must still be protected by the deployment. The Python control plane alone is not claimed to be a kernel isolation boundary. The AgentContainment documentation describes the required host-side assumptions and current proof scope.
 
 ## Architecture
 
@@ -166,39 +219,6 @@ The current enforcement implementation lives in the companion repository. The br
 - **WarrantKit** — the correlation and control layer that relates those independent facts without turning any one source into a universal authority.
 
 This repository pins the AgentContainment engine as a Git submodule so the security-critical implementation remains independently reviewable while the platform surface is developed here.
-
-## Buyer outcomes
-
-WarrantKit is being built for teams operating autonomous agents where an execution boundary, incident response path, and defensible evidence trail matter.
-
-### Core buyer workflows
-
-- **Runtime authorization:** define what an agent, workload, credential, and network path are permitted to do.
-- **Policy violation response:** detect an attempted violation and move from authorization failure to runtime containment when required.
-- **Incident containment:** detect a policy violation, invalidate stale authority, revoke credential/capability use, and halt or contain the workload through the enforcement layer.
-- **Authority lifecycle:** bind authority to agent identity, policy identity, execution identity, and epoch so a violation or recovery transition cannot silently preserve stale authorization.
-- **Credential security:** revoke or invalidate secrets and credentials associated with violated or expired authority rather than relying on the agent to stop using them.
-- **Verification and evidence:** distinguish an observed event from successful verification and bind the resulting evidence to an authenticated receipt.
-- **Recovery:** release external enforcement only after the required conditions are independently verified, then restore execution under a fresh authority epoch.
-- **Fleet governance:** associate agents with organization, project, runtime, policy, status, and rollout state without allowing governance infrastructure to weaken local enforcement.
-
-### What a buyer should eventually see
-
-A contained incident should be understandable without reading source code:
-
-```text
-Agent:        payments-agent-1842
-Policy:       payments-prod-v7
-Event:        unauthorized credential use
-Decision:     DENY
-Containment:  runtime fenced
-Credentials:  stale authority revoked
-Verification: enforcement independently verified
-Receipt:      authenticated
-Recovery:     pending operator approval
-```
-
-The commercial platform layer will add the operator workflow, centralized evidence, identity/RBAC, integrations, and fleet operations around the open enforcement foundation.
 
 ## What the platform is designed to provide
 
@@ -249,28 +269,6 @@ The design intentionally keeps rollout and fleet observation from becoming the s
 
 The open package provides these as **local governance primitives**. They do not constitute a hosted multi-tenant control plane, server-side RBAC system, or centralized enforcement authority.
 
-## Commercial product boundary
-
-The open foundation is intentionally inspectable and independently usable. The commercial WarrantKit platform is where centralized operations become the product: fleet-wide policy distribution, durable evidence retention, incident workflows, enterprise identity and RBAC, SIEM/SOAR integrations, deployment automation, and supported production operations.
-
-The enforcement boundary remains local and must fail closed. A hosted control plane must never be able to weaken containment, restore revoked authority, or resurrect credentials because of network failure, billing state, service outage, or loss of connectivity.
-
-## Enterprise & support
-
-WarrantKit is being developed with a clear separation between the open runtime/governance foundation and future centralized enterprise capabilities.
-
-The open platform provides local fleet governance, runtime enforcement, independently derived evidence, correlation, verification, and proof primitives. Future centralized capabilities can build above that foundation for organizations that need coordinated governance across many agents and runtimes, including areas such as:
-
-- Centralized policy distribution and fleet orchestration.
-- Durable evidence storage and long-term audit history.
-- RBAC and enterprise identity integrations.
-- Alerts, webhooks, SIEM, and observability integrations.
-- Deployment and integration support.
-
-The security-critical runtime remains the local enforcement boundary. Fleet governance and any future centralized control plane must not be able to weaken local containment, restore revoked authority, or resurrect credentials because of a network outage, billing state, unavailable service, or control-plane failure.
-
-**For enterprise integration, design-partner deployments, or custom security engineering, contact the project maintainers.**
-
 ## Repository relationship
 
 ```
@@ -293,29 +291,6 @@ WarrantKit correlates independently derived evidence from these sources. The sou
 ## License
 
 Apache-2.0.
-
-## Real workload proof
-
-The platform includes a Linux integration proof that exercises the full local path against a real workload:
-
-1. Create a dedicated cgroup-v2 workload boundary.
-2. Launch a real child process.
-3. Attach the child to that boundary.
-4. Bind the boundary to a WarrantKit execution identity.
-5. Invoke the pinned AgentContainment cgroup provider.
-6. Independently verify the cgroup is no longer populated.
-7. Verify the workload exited.
-8. Bind the resulting containment evidence to an authenticated proof receipt.
-9. Verify that receipt with an offline verifier.
-
-The proof is deliberately environment-gated because it requires Linux cgroup v2 and appropriate host privileges/delegation:
-
-```bash
-AGENT_CONTAIN_RUN_REAL_CGROUP=1 pytest -q tests/integration/test_real_cgroup_execution.py
-```
-
-A successful run is evidence from that tested Linux environment. It does not establish a universal host-security claim. The receipt is HMAC-authenticated and tamper-evident; it is not a non-repudiable attestation.
-
 
 ## Evidence model
 
