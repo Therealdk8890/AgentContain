@@ -23,7 +23,7 @@ def _policy_from_args(args: argparse.Namespace) -> Policy:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="agentcontain", description="WarrantKit runtime enforcement and proof platform for autonomous AI agents.")
+    parser = argparse.ArgumentParser(prog="warrantkit", description="WarrantKit runtime authorization, enforcement, and proof platform for autonomous AI agents.")
     sub = parser.add_subparsers(dest="command", required=True)
     inspect = sub.add_parser("inspect", help="inspect an evidence envelope as an operator incident")
     inspect.add_argument("--evidence-file", required=True, help="JSON evidence envelope produced by WarrantKit")
@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--egress", action="append", default=[], help="allowed egress target")
     run.add_argument("--cgroup-path", help="existing Linux cgroup-v2 path for this workload")
     run.add_argument("--receipt-secret-file", help="read the HMAC receipt secret from a file instead of exposing it in argv")
-    run.add_argument("--receipt-secret-env", default="AGENTCONTAIN_RECEIPT_SECRET", help="environment variable containing the HMAC receipt secret")
+    run.add_argument("--receipt-secret-env", default="WARRANTKIT_RECEIPT_SECRET", help="environment variable containing the HMAC receipt secret")
     run.add_argument("--evidence-output", help="write the complete evidence envelope to this JSON file")
     run.add_argument("--contain", action="store_true", help="invoke external containment immediately after admission")
     run.add_argument("--json", action="store_true", help="emit machine-readable execution state")
@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"    {event.sequence}. {event.name}")
             return 0
         except Exception as exc:
-            print(f"agentcontain: {exc}", file=sys.stderr)
+            print(f"warrantkit: {exc}", file=sys.stderr)
             return 1
     if args.command == "demo":
         from .demo import run_demo
@@ -87,6 +87,10 @@ def main(argv: list[str] | None = None) -> int:
                 configured_secret = os.environ.get(args.receipt_secret_env)
                 if configured_secret:
                     receipt_secret = configured_secret.encode("utf-8")
+                elif args.receipt_secret_env == "WARRANTKIT_RECEIPT_SECRET":
+                    legacy_secret = os.environ.get("AGENTCONTAIN_RECEIPT_SECRET")
+                    if legacy_secret:
+                        receipt_secret = legacy_secret.encode("utf-8")
 
             receipt = (
                 containment_receipt(admission, receipt_secret)
@@ -141,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  Evidence: {args.evidence_output}")
             return 0
         except Exception as exc:
-            print(f"agentcontain: {exc}", file=sys.stderr)
+            print(f"warrantkit: {exc}", file=sys.stderr)
             return 1
     return 2
 

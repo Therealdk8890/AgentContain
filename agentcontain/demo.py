@@ -1,4 +1,4 @@
-"""No-privilege demonstration of AgentContain lifecycle and proof semantics."""
+"""No-privilege demonstration of WarrantKit lifecycle and proof semantics."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from .evidence import EvidenceEnvelope, canonical_json
 from .operator import OperatorIncidentView
 from .policy import Policy
 
-_DEMO_KEY = b"agentcontain-demo-key-v1"
+_DEMO_KEY = b"warrantkit-demo-key-v1"
 
 
 @dataclass(frozen=True)
@@ -80,9 +80,9 @@ def run_demo() -> int:
         execution=base.execution,
         events=base.events,
         enforcement={"complete": True, "mode": "simulated", "external_enforcement": False},
-        verification={"status": "observed", "method": "agentcontain-no-root-demo"},
+        verification={"status": "observed", "method": "warrantkit-no-root-demo"},
         proof={"simulated": True, "host_enforcement_verified": False},
-        provenance={"producer": "agentcontain-demo"},
+        provenance={"producer": "warrantkit-demo"},
     )
     receipt = _issue_receipt(evidence)
     evidence = evidence.with_receipt(receipt)
@@ -94,7 +94,7 @@ def run_demo() -> int:
     view = OperatorIncidentView.from_evidence(evidence)
     incident = view.incident
 
-    print("AgentContain — reference incident experience")
+    print("WarrantKit — reference incident experience")
     print("--------------------------------------------")
     print(f"Execution:     {admission.identity.execution_id}")
     print(f"Agent:         {view.agent['agent_id']}")

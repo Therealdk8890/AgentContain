@@ -136,7 +136,7 @@ The lifecycle also distinguishes **detection** from **verification**: detection 
 
 ## Current quick start
 
-The project is **WarrantKit**; the CLI/package name remains **`agentcontain`** for compatibility with the existing runtime surface.
+The project is **WarrantKit**; the project-facing CLI is **`warrantkit`**. The legacy **`agentcontain`** command remains as a compatibility alias.
 
 The platform CLI is available as `agentcontain`.
 
@@ -149,7 +149,7 @@ git clone --recurse-submodules https://github.com/Therealdk8890/WarrantKit.git
 cd WarrantKit
 python -m pip install ./AgentContainment
 python -m pip install .
-agentcontain demo
+warrantkit demo
 ```
 
 This demonstrates the lifecycle, evidence envelope, and receipt semantics without host privileges. It is explicitly **simulated** and must not be interpreted as kernel-level containment proof.
@@ -159,7 +159,7 @@ This demonstrates the lifecycle, evidence envelope, and receipt semantics withou
 The real runtime adapter uses the pinned AgentContainment engine:
 
 ```bash
-agentcontain run --policy demo --agent-id demo-agent --contain
+warrantkit run --policy demo --agent-id demo-agent --contain
 ```
 
 The real path may require Linux, cgroup-v2 support, and the privileges/delegation required by the selected enforcement provider. The host-boundary proof above is the stronger path to use when evaluating actual workload containment.
