@@ -18,7 +18,7 @@ class ExecutionIdentity:
     runtime_id: str | None = None
 
     @classmethod
-    def create(cls, agent_id: str, policy_id: str, policy_digest: str, *, epoch: int = 0) -> "ExecutionIdentity":
+    def create(cls, agent_id: str, policy_id: str, policy_digest: str, *, epoch: int = 0, runtime_id: str | None = None) -> "ExecutionIdentity":
         if not agent_id.strip():
             raise ValueError("agent_id must not be empty")
         if not policy_id.strip():
