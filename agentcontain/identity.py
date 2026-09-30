@@ -15,6 +15,7 @@ class ExecutionIdentity:
     policy_id: str
     policy_digest: str
     epoch: int = 0
+    runtime_id: str | None = None
 
     @classmethod
     def create(cls, agent_id: str, policy_id: str, policy_digest: str, *, epoch: int = 0) -> "ExecutionIdentity":
@@ -24,6 +25,8 @@ class ExecutionIdentity:
             raise ValueError("policy_id must not be empty")
         if epoch < 0:
             raise ValueError("epoch must be >= 0")
+        if runtime_id is not None and not runtime_id.strip():
+            raise ValueError("runtime_id must not be empty when supplied")
         return cls(
             execution_id=str(uuid4()),
             agent_id=agent_id,
@@ -39,4 +42,5 @@ class ExecutionIdentity:
             policy_id=self.policy_id,
             policy_digest=self.policy_digest,
             epoch=self.epoch + 1,
+            runtime_id=self.runtime_id,
         )
