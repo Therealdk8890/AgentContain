@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from .evidence import EvidenceEnvelope
+from .evidence import EvidenceEnvelope, validate_runtime_pinned_binding
 from .fleet import FleetRegistry
 from .identity import ExecutionIdentity
 from .policy import Policy
@@ -213,8 +213,13 @@ def halt(admission: Admission):
     return admission.machine.halt()
 
 
-def verify(admission: Admission):
-    """Record verification only when authoritative runtime proof is sufficient."""
+def verify(admission: Admission, *, runtime_binding: dict | None = None):
+    """Verify authoritative runtime proof, optionally requiring second evidence.
+
+    When a runtime binding is supplied, verification cannot complete unless
+    authority revocation, external enforcement, and independent observation
+    are all pinned to the current runtime epoch.
+    """
     identity = admission.identity
     report = getattr(admission.engine, "last_report", None)
     report_epoch = getattr(report, "epoch", None) if report is not None else None
@@ -235,6 +240,11 @@ def verify(admission: Admission):
         raise RuntimeError("runtime verification lacks independent external verification")
     if not bool(getattr(report, "durable", True)):
         raise RuntimeError("runtime verification evidence is not durable")
+    if runtime_binding is not None:
+        validate_runtime_pinned_binding(runtime_binding, {
+            "agent_id": identity.agent_id,
+            "epoch": identity.epoch,
+        })
     return admission.machine.verify()
 
 
