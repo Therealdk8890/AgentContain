@@ -23,7 +23,7 @@ def _policy_from_args(args: argparse.Namespace) -> Policy:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="agentcontain", description="WarrantKit runtime enforcement and proof platform for autonomous AI agents.")
+    parser = argparse.ArgumentParser(prog="warrantkit", description="WarrantKit runtime authorization, enforcement, and proof platform for autonomous AI agents.")
     sub = parser.add_subparsers(dest="command", required=True)
     inspect = sub.add_parser("inspect", help="inspect an evidence envelope as an operator incident")
     inspect.add_argument("--evidence-file", required=True, help="JSON evidence envelope produced by WarrantKit")
@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"    {event.sequence}. {event.name}")
             return 0
         except Exception as exc:
-            print(f"agentcontain: {exc}", file=sys.stderr)
+            print(f"warrantkit: {exc}", file=sys.stderr)
             return 1
     if args.command == "demo":
         from .demo import run_demo
@@ -141,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  Evidence: {args.evidence_output}")
             return 0
         except Exception as exc:
-            print(f"agentcontain: {exc}", file=sys.stderr)
+            print(f"warrantkit: {exc}", file=sys.stderr)
             return 1
     return 2
 
