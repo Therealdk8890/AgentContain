@@ -1,0 +1,146 @@
+import pytest
+
+from agentcontain.engine import admit, contain, verify
+from agentcontain.evidence import EvidenceEnvelope
+from agentcontain.policy import Policy
+
+
+class Report:
+    epoch = 1
+    complete = True
+    certified = True
+    durable = True
+    external_verified = True
+
+
+class Engine:
+    last_report = None
+
+    def contain(self):
+        self.last_report = Report()
+        return self.last_report
+
+
+def _admission(runtime_id="runtime-1"):
+    return admit(
+        Policy("production"),
+        agent_id="agent-1",
+        runtime_id=runtime_id,
+        engine=Engine(),
+    )
+
+
+def _binding(*, epoch=1, runtime_id="runtime-1", action="KILL", state="TERMINATED"):
+    return {
+        "schema_version": "agentcontain.runtime-binding/v1",
+        "runtime_id": runtime_id,
+        "agent_id": "agent-1",
+        "epoch": epoch,
+        "authority": {
+            "digest": "sha256:" + "1" * 64,
+            "revoked": True,
+            "revoked_at": "2026-09-30T17:00:00Z",
+        },
+        "enforcement": {
+            "digest": "sha256:" + "2" * 64,
+            "action": action,
+            "external_boundary": True,
+            "occurred_at": "2026-09-30T17:00:01Z",
+        },
+        "observation": {
+            "digest": "sha256:" + "3" * 64,
+            "state": state,
+            "observed_at": "2026-09-30T17:00:02Z",
+        },
+    }
+
+
+def test_runtime_pinned_second_evidence_verifies_exact_epoch():
+    admission = _admission()
+    contain(admission)
+    envelope = EvidenceEnvelope.from_execution(
+        execution={
+            "execution_id": admission.identity.execution_id,
+            "agent_id": admission.identity.agent_id,
+            "policy_id": admission.identity.policy_id,
+            "policy_digest": admission.identity.policy_digest,
+            "epoch": admission.identity.epoch,
+            "runtime_id": admission.identity.runtime_id,
+        },
+        events=({"execution_id": admission.identity.execution_id, "sequence": 1, "name": "containment_verified", "epoch": 1},),
+        verification={"status": "observed"},
+    )
+
+    bound = envelope.with_runtime_pinned_evidence(_binding())
+
+    assert bound.verification["status"] == "verified"
+    assert bound.proof["runtime_binding"]["runtime_id"] == "runtime-1"
+    assert bound.proof["runtime_binding"]["epoch"] == 1
+
+
+def test_stale_runtime_binding_cannot_verify_new_epoch():
+    admission = _admission()
+    contain(admission)
+    admission.identity = admission.identity.advance_epoch()
+    binding = _binding(epoch=1)
+
+    with pytest.raises(ValueError, match="epoch does not match"):
+        EvidenceEnvelope.from_execution(
+            execution={
+                "execution_id": admission.identity.execution_id,
+                "agent_id": admission.identity.agent_id,
+                "policy_id": admission.identity.policy_id,
+                "policy_digest": admission.identity.policy_digest,
+                "epoch": admission.identity.epoch,
+                "runtime_id": admission.identity.runtime_id,
+            },
+            events=({"execution_id": admission.identity.execution_id, "sequence": 1, "name": "containment_verified", "epoch": 2},),
+        ).with_runtime_pinned_evidence(binding)
+
+
+def test_substituted_runtime_cannot_verify():
+    admission = _admission(runtime_id="runtime-intended")
+    contain(admission)
+    envelope = EvidenceEnvelope.from_execution(
+        execution={
+            "execution_id": admission.identity.execution_id,
+            "agent_id": admission.identity.agent_id,
+            "policy_id": admission.identity.policy_id,
+            "policy_digest": admission.identity.policy_digest,
+            "epoch": admission.identity.epoch,
+            "runtime_id": admission.identity.runtime_id,
+        },
+        events=({"execution_id": admission.identity.execution_id, "sequence": 1, "name": "containment_verified", "epoch": 1},),
+    )
+
+    with pytest.raises(ValueError, match="runtime_id does not match"):
+        envelope.with_runtime_pinned_evidence(_binding(runtime_id="runtime-substituted"))
+
+
+def test_agent_self_claim_cannot_satisfy_runtime_binding():
+    binding = _binding()
+    binding["enforcement"]["external_boundary"] = False
+
+    with pytest.raises(ValueError, match="external to the agent"):
+        EvidenceEnvelope.from_execution(
+            execution={"execution_id": "e", "agent_id": "agent-1", "policy_id": "p", "policy_digest": "d", "epoch": 1, "runtime_id": "runtime-1"},
+            events=({"execution_id": "e", "sequence": 1, "name": "agent_claimed_stopped", "epoch": 1},),
+        ).with_runtime_pinned_evidence(binding)
+
+
+def test_observation_before_enforcement_fails_closed():
+    binding = _binding()
+    binding["observation"]["observed_at"] = "2026-09-30T16:59:59Z"
+
+    with pytest.raises(ValueError, match="observation predates enforcement"):
+        EvidenceEnvelope.from_execution(
+            execution={"execution_id": "e", "agent_id": "agent-1", "policy_id": "p", "policy_digest": "d", "epoch": 1, "runtime_id": "runtime-1"},
+            events=({"execution_id": "e", "sequence": 1, "name": "containment_verified", "epoch": 1},),
+        ).with_runtime_pinned_evidence(binding)
+
+
+def test_verify_path_accepts_runtime_pinned_second_evidence():
+    admission = _admission()
+    contain(admission)
+    verify(admission, runtime_binding=_binding())
+    assert admission.machine.state.value == "verified"
