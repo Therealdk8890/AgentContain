@@ -139,6 +139,40 @@ class EvidenceEnvelope:
             schema_version=SCHEMA_VERSION,
         )
 
+    def with_runtime_pinned_evidence(
+        self,
+        binding: Mapping[str, Any],
+    ) -> "EvidenceEnvelope":
+        """Bind independent runtime evidence to this exact execution epoch.
+
+        This does not manufacture host proof. The binding must carry digests
+        produced by the authority, enforcement, and observation boundaries.
+        WarrantKit only validates that those independently produced records
+        refer to the same runtime, agent, epoch, and ordered enforcement path.
+        """
+        validate_runtime_pinned_binding(binding, self.execution)
+        proof = dict(self.proof)
+        proof["runtime_binding"] = dict(binding)
+        verification = dict(self.verification)
+        verification.update({
+            "status": "verified",
+            "method": "runtime-pinned-second-evidence",
+            "scope": "external-runtime-enforcement",
+        })
+        return EvidenceEnvelope(
+            execution=self.execution,
+            events=self.events,
+            enforcement=self.enforcement,
+            verification=verification,
+            proof=proof,
+            receipt=self.receipt,
+            governance=self.governance,
+            provenance=self.provenance,
+            external_evidence=self.external_evidence,
+            schema_version=SCHEMA_VERSION,
+        )
+
+
     def validate(self) -> None:
         required = {"execution_id", "agent_id", "policy_id", "policy_digest", "epoch"}
         missing = required - set(self.execution)
