@@ -87,6 +87,10 @@ def main(argv: list[str] | None = None) -> int:
                 configured_secret = os.environ.get(args.receipt_secret_env)
                 if configured_secret:
                     receipt_secret = configured_secret.encode("utf-8")
+                elif args.receipt_secret_env == "WARRANTKIT_RECEIPT_SECRET":
+                    legacy_secret = os.environ.get("AGENTCONTAIN_RECEIPT_SECRET")
+                    if legacy_secret:
+                        receipt_secret = legacy_secret.encode("utf-8")
 
             receipt = (
                 containment_receipt(admission, receipt_secret)
