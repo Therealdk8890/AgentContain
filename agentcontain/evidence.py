@@ -257,6 +257,9 @@ class EvidenceEnvelope:
         if sequences and sequences != list(range(1, len(sequences) + 1)):
             raise ValueError("event sequence must be contiguous starting at 1")
 
+        runtime_binding = self.proof.get("runtime_binding")
+        if runtime_binding is not None:
+            validate_runtime_pinned_binding(runtime_binding, self.execution)
         if status == "verified" and not self.events:
             raise ValueError("verified evidence requires at least one event")
 
