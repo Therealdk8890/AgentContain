@@ -12,7 +12,7 @@ WarrantKit is the runtime security platform around the AgentContainment enforcem
 
 Autonomous agents can execute code, access data, call external services, and manage infrastructure. The operational problem is not only observing those actions; it is controlling them, responding when policy is violated, and producing evidence that the control actually operated.
 
-WarrantKit is designed first as an enforcement system: define policy, establish execution identity, enforce boundaries outside the agent trust boundary, detect violations, revoke authority and credential/capability use, halt or contain the workload, and require fresh authorization for recovery. The evidence architecture then independently records and evaluates what happened so the control is not merely asserted.
+WarrantKit is designed first as an enforcement system: define policy, establish execution identity, enforce boundaries outside the agent trust boundary, detect violations, revoke authority and credential/capability use, **forcibly terminate or fence the workload when policy requires it**, and require fresh authorization for recovery. The evidence architecture then independently records and evaluates what happened so the control is not merely asserted.
 
 The core workflow is:
 
@@ -23,7 +23,8 @@ For enterprise security and governance teams, this translates into:
 - **Authorization:** define the actions, resources, credentials, and execution conditions an agent is permitted to use.
 - **Authority revocation:** invalidate stale or violated authority and revoke credential/capability use when policy requires it.
 - **Containment:** limit what an agent workload can do at runtime, including process and egress controls where supported.
-- **Fail-closed response:** fence and halt workloads when enforcement or recovery conditions require it.
+- **Hard-stop enforcement:** when policy is violated or recovery cannot safely proceed, the runtime enforcement layer can forcibly terminate and/or fence the workload rather than relying on the agent to cooperate.
+- **Fail-closed response:** enforcement and recovery fail toward containment; the control plane does not treat an agent's willingness to stop as evidence of termination.
 - **Auditability:** produce structured execution evidence and tamper-evident verification receipts.
 - **Policy traceability:** bind executions to policy identity, policy digests, and execution identity.
 - **Defense in depth:** complement existing containers, Kubernetes, gVisor, Kata, cgroups, and other isolation mechanisms.
@@ -71,8 +72,27 @@ A simplified platform flow is:
 
 The supporting components provide isolation, cancellation, concurrency testing, and test-reliability capabilities around that core.
 
-**The agent is never the authority for its own actions.** WarrantKit applies externally supplied policy and authorization controls; AgentContainment performs the security-critical runtime enforcement; the evidence and verification layers record and evaluate what happened.
+**The agent is never the authority for its own actions — and it is not trusted to kill itself.** WarrantKit applies externally supplied policy and authorization controls; AgentContainment performs the security-critical runtime kill/fencing enforcement; the evidence and verification layers record and evaluate what happened.
 
+
+## The kill path is a first-class security control
+
+WarrantKit is not an instruction to an agent to stop itself. **The security-critical enforcement action happens outside the agent trust boundary.** When a workload must be stopped, WarrantKit delegates the enforcement decision to the pinned AgentContainment engine, which provides the runtime kill/fencing mechanism and the corresponding enforcement evidence.
+
+The intended control sequence is:
+
+**Detect violation → Revoke authority → Invoke external enforcement → Kill/fence the runtime → Verify the workload is gone → Prove the enforcement event**
+
+For the Linux cgroup-v2 path, the real-workload proof exercises a dedicated workload boundary, invokes the AgentContainment provider, independently checks that the cgroup is no longer populated, and verifies that the workload exited. This is the part of the system that turns **“the agent should stop”** into **“the runtime was actually stopped.”**
+
+The distinction matters:
+
+- **Warden observes.** It does not become the privileged hand that kills the workload.
+- **WarrantKit authorizes and coordinates.** It revokes authority and decides when containment/recovery rules apply.
+- **AgentContainment enforces.** It owns the security-critical runtime kill/fencing boundary.
+- **The evidence layer proves.** It records and verifies what happened, including the relevant runtime epoch.
+
+The platform therefore does not depend on an autonomous agent voluntarily honoring a stop instruction.
 
 ## Real workload proof
 
@@ -82,7 +102,7 @@ The platform includes a Linux integration proof that exercises the full local pa
 2. Launch a real child process.
 3. Attach the child to that boundary.
 4. Bind the boundary to a WarrantKit execution identity.
-5. Invoke the pinned AgentContainment cgroup provider.
+5. Invoke the pinned AgentContainment cgroup provider to **forcibly terminate the workload through the runtime enforcement boundary**.
 6. Independently verify the cgroup is no longer populated.
 7. Verify the workload exited.
 8. Bind the resulting containment evidence to an authenticated proof receipt.
@@ -104,7 +124,7 @@ The table below distinguishes implemented platform capabilities from environment
 | Capability | Current status | Evidence boundary |
 |---|---|---|
 | External authorization and admission | **Implemented · CI-tested** | Policy/admission and execution identity are enforced outside the agent runtime. |
-| Runtime containment and fencing | **Implemented · CI-tested** | Delegated to the pinned AgentContainment engine. |
+| Runtime containment, kill, and fencing | **Implemented · CI-tested** | Delegated to the pinned AgentContainment engine; the enforcement boundary is external to the agent. |
 | Epoch fencing / stale-authority invalidation | **Implemented · CI-tested** | End-to-end containment → recovery → evidence regression is green on `main`. |
 | Fail-closed recovery | **Implemented · CI-tested** | Recovery is runtime-authoritative; failed recovery is compensated back to containment. |
 | Evidence envelopes and epoch scoping | **Implemented · CI-tested** | Structured evidence rejects stale runtime proof and preserves prior epoch history separately. |
@@ -225,6 +245,7 @@ This repository pins the AgentContainment engine as a Git submodule so the secur
 ## What the platform is designed to provide
 
 - Runtime enforcement outside the agent trust boundary.
+- External hard-stop / kill and fencing of contained workloads.
 - Deterministic admission and policy control.
 - Authority and credential/capability revocation after policy violations.
 - Epoch fencing and stale-authority invalidation.
