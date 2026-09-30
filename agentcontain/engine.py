@@ -143,6 +143,7 @@ def admit(
     agent_id: str,
     engine: EnforcementEngine,
     registry: PolicyRegistry | None = None,
+    runtime_id: str | None = None,
 ) -> Admission:
     """Validate and admit one execution against the locally accepted policy."""
     registry = registry or PolicyRegistry()
@@ -151,6 +152,7 @@ def admit(
         agent_id,
         bundle.policy_id,
         bundle.policy_digest,
+        runtime_id=runtime_id,
     )
     machine = PlatformStateMachine(identity)
     machine.admit()
@@ -392,6 +394,7 @@ def evidence_envelope(admission: Admission, *, fleet: FleetRegistry | None = Non
             "policy_id": admission.policy.policy_id,
             "policy_digest": admission.policy.policy_digest,
             "epoch": identity.epoch,
+            **({"runtime_id": identity.runtime_id} if identity.runtime_id is not None else {}),
         },
         events=events,
         enforcement=enforcement,
