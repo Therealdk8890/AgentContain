@@ -86,7 +86,7 @@ def test_cli_returns_nonzero_when_engine_cannot_be_loaded(monkeypatch, capsys) -
 
 def test_cli_reads_receipt_secret_from_environment(monkeypatch, capsys) -> None:
     monkeypatch.setattr(cli, "build_agentcontainment_engine", lambda agent_id, **kwargs: FakeEngine())
-    monkeypatch.setenv("AGENTCONTAIN_RECEIPT_SECRET", "test-secret")
+    monkeypatch.setenv("WARRANTKIT_RECEIPT_SECRET", "test-secret")
     captured = {}
 
     def fake_receipt(admission, secret):
@@ -200,3 +200,7 @@ def test_cli_inspect_json_is_machine_readable(tmp_path, capsys) -> None:
     assert payload["agent"]["agent_id"] == "agent-2"
     assert payload["incident"]["execution_id"] == "exec-2"
     assert payload["timeline"][0]["name"] == "admission_verified"
+
+
+def test_cli_primary_command_name() -> None:
+    assert cli.build_parser().prog == "warrantkit"
