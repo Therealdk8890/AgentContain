@@ -201,4 +201,3 @@ def test_real_enforcement_evidence_recovery_lifecycle_is_epoch_fenced(agent_cont
                 supervisor.remove(cgroup)
             except OSError:
                 pass
-\n
