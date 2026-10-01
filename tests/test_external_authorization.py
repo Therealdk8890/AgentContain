@@ -103,3 +103,27 @@ def test_external_authorization_cannot_grant_capability_outside_policy() -> None
     )
     with pytest.raises(ValueError, match="write"):
         decision.to_warrant(policy=policy, runtime_id="runtime-1", epoch=1)
+
+
+def test_external_authorization_cannot_extend_validity_window() -> None:
+    policy = _policy()
+    decision = _decision(policy)
+    with pytest.raises(ValueError, match="extend external authorization"):
+        decision.to_warrant(
+            policy=policy,
+            runtime_id="runtime-1",
+            epoch=1,
+            expires_at=NOW + timedelta(minutes=10),
+        )
+
+
+def test_external_authorization_cannot_backdate_warrant_before_issuance() -> None:
+    policy = _policy()
+    decision = _decision(policy)
+    with pytest.raises(ValueError, match="precede external authorization"):
+        decision.to_warrant(
+            policy=policy,
+            runtime_id="runtime-1",
+            epoch=1,
+            issued_at=NOW - timedelta(minutes=1),
+        )
