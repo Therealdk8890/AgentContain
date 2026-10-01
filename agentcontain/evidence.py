@@ -65,17 +65,20 @@ def validate_runtime_pinned_binding(
             raise ValueError(f"runtime binding {label} agent_id does not match")
         if payload.get("epoch") != binding["epoch"]:
             raise ValueError(f"runtime binding {label} epoch does not match")
-    if authority.get("revoked") is not True:
+    authority_record = authority["record"]
+    enforcement_record = enforcement["record"]
+    observation_record = observation["record"]
+    if authority_record.get("revoked") is not True:
         raise ValueError("runtime binding requires explicit authority revocation evidence")
-    if enforcement.get("action") not in {"KILL", "FENCE"}:
+    if enforcement_record.get("action") not in {"KILL", "FENCE"}:
         raise ValueError("runtime binding enforcement action must be KILL or FENCE")
-    if enforcement.get("external_boundary") is not True:
+    if enforcement_record.get("external_boundary") is not True:
         raise ValueError("runtime binding enforcement must be external to the agent")
-    if observation.get("state") not in {"TERMINATED", "FENCED"}:
-        raise ValueError("runtime binding observation state must be TERMINATED or FENCED")
+    if observation_record.get("state") not in {"TERMINATED", "FENCED", "contained", "halted"}:
+        raise ValueError("runtime binding observation state must be TERMINATED, FENCED, contained, or halted")
 
     times = []
-    for label, item, key in (("authority", authority, "revoked_at"), ("enforcement", enforcement, "occurred_at"), ("observation", observation, "observed_at")):
+    for label, item, key in (("authority", authority_record, "revoked_at"), ("enforcement", enforcement_record, "occurred_at"), ("observation", observation_record, "observed_at")):
         value = item.get(key)
         if not isinstance(value, str):
             raise ValueError(f"runtime binding {label} {key} is required")
