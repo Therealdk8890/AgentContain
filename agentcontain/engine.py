@@ -299,7 +299,7 @@ def runtime_pinned_evidence(
         authority_export = getattr(admission.engine, "authority_revocation_evidence_record", None)
         if authority_export is None:
             raise RuntimeError("runtime engine does not expose authority revocation evidence")
-        authority_record = authority_export()
+        authority_record = authority_export() if callable(authority_export) else authority_export
     authority = dict(authority_record)
     authority.setdefault("runtime_id", runtime_id)
     authority.setdefault("agent_id", identity.agent_id)
