@@ -58,8 +58,12 @@ class PlatformStateMachine:
         self.state = target
         return event
 
-    def admit(self) -> Event:
-        return self.transition(LifecycleState.ADMITTED, event_name="admission_verified")
+    def admit(self, details: dict[str, str] | None = None) -> Event:
+        return self.transition(
+            LifecycleState.ADMITTED,
+            event_name="admission_verified",
+            details=details,
+        )
 
     def contain(self) -> Event:
         return self.transition(LifecycleState.CONTAINED, event_name="containment_verified")

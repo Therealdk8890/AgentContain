@@ -117,13 +117,18 @@ class Warrant:
         evidence_requirements: EvidenceRequirements | None = None,
     ) -> "Warrant":
         """Issue authority from an accepted policy; never from evidence."""
+        # PolicyBundle is the accepted-policy representation used by the
+        # platform; raw Policy remains supported for transport-neutral callers.
+        policy_digest = getattr(policy, "policy_digest", None)
+        if policy_digest is None:
+            policy_digest = policy.digest
         return cls(
             warrant_id=warrant_id,
             issuer=issuer,
             subject=WarrantSubject(agent_id, execution_id),
             authority=WarrantAuthority(
                 policy_id=policy.policy_id,
-                policy_digest=policy.digest,
+                policy_digest=policy_digest,
                 capabilities=tuple(capabilities),
                 constraints=tuple(constraints),
             ),

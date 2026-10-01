@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Protocol
+from uuid import uuid4
 
 from .evidence import EvidenceEnvelope, validate_runtime_pinned_binding
 from .fleet import FleetRegistry
@@ -11,6 +13,7 @@ from .identity import ExecutionIdentity
 from .policy import Policy
 from .policy_distribution import PolicyBundle, PolicyRegistry
 from .state import PlatformStateMachine
+from .warrant import Warrant, RevocationState, verify_warrant
 
 
 class ContainmentResult(Protocol):
@@ -87,6 +90,7 @@ class Admission:
     machine: PlatformStateMachine
     engine: EnforcementEngine
     policy: PolicyBundle
+    warrant: Warrant | None = None
 
 
 class AgentContainmentRuntimeAdapter:
@@ -157,30 +161,102 @@ def admit(
     engine: EnforcementEngine,
     registry: PolicyRegistry | None = None,
     runtime_id: str | None = None,
+    warrant_issuer: str = "warrantkit",
+    warrant_ttl: timedelta = timedelta(hours=1),
 ) -> Admission:
-    """Validate and admit one execution against the locally accepted policy."""
+    """Validate, issue, and admit one execution under a bounded Warrant.
+
+    A runtime identifier is required for a Warrant. Provider-neutral test/fake
+    engines may omit runtime identity and retain the legacy admission shape.
+    """
     registry = registry or PolicyRegistry()
     bundle = registry.accept_policy(policy)
+    if warrant_ttl <= timedelta(0):
+        raise ValueError("warrant_ttl must be positive")
     identity = ExecutionIdentity.create(
         agent_id,
         bundle.policy_id,
         bundle.policy_digest,
         runtime_id=runtime_id,
     )
+    warrant = None
+    if identity.runtime_id is not None:
+        issued_at = datetime.now(timezone.utc)
+        warrant = Warrant.issue(
+            warrant_id=str(uuid4()),
+            issuer=warrant_issuer,
+            agent_id=identity.agent_id,
+            execution_id=identity.execution_id,
+            policy=bundle,
+            runtime_id=identity.runtime_id,
+            epoch=identity.epoch,
+            issued_at=issued_at,
+            expires_at=issued_at + warrant_ttl,
+            capabilities=tuple(bundle.policy.capabilities),
+        )
+        verify_warrant(
+            warrant,
+            execution_id=identity.execution_id,
+            agent_id=identity.agent_id,
+            policy_id=identity.policy_id,
+            policy_digest=identity.policy_digest,
+            runtime_id=identity.runtime_id,
+            epoch=identity.epoch,
+            now=issued_at,
+        )
     machine = PlatformStateMachine(identity)
-    machine.admit()
+    machine.admit(
+        details={"warrant_id": warrant.warrant_id} if warrant is not None else None
+    )
     return Admission(
         identity=identity,
         machine=machine,
         engine=engine,
         policy=bundle,
+        warrant=warrant,
     )
-
 
 def detect(admission: Admission, details: dict[str, str] | None = None):
     """Record an observed anomaly without changing runtime enforcement."""
     return admission.machine.detect(details)
 
+
+
+def _revoke_warrant(admission: Admission) -> None:
+    if admission.warrant is not None and admission.warrant.lifecycle.state == RevocationState.ACTIVE:
+        admission.warrant = admission.warrant.revoke(
+            revoked_at=datetime.now(timezone.utc)
+        )
+
+
+def _issue_current_warrant(admission: Admission) -> Warrant:
+    if admission.identity.runtime_id is None:
+        raise RuntimeError("runtime identity is required for Warrant authority")
+    issued_at = datetime.now(timezone.utc)
+    warrant = Warrant.issue(
+        warrant_id=str(uuid4()),
+        issuer="warrantkit",
+        agent_id=admission.identity.agent_id,
+        execution_id=admission.identity.execution_id,
+        policy=admission.policy,
+        runtime_id=admission.identity.runtime_id,
+        epoch=admission.identity.epoch,
+        issued_at=issued_at,
+        expires_at=issued_at + timedelta(hours=1),
+        capabilities=tuple(admission.policy.policy.capabilities),
+    )
+    verify_warrant(
+        warrant,
+        execution_id=admission.identity.execution_id,
+        agent_id=admission.identity.agent_id,
+        policy_id=admission.identity.policy_id,
+        policy_digest=admission.identity.policy_digest,
+        runtime_id=admission.identity.runtime_id,
+        epoch=admission.identity.epoch,
+        now=issued_at,
+    )
+    admission.warrant = warrant
+    return warrant
 
 def contain(admission: Admission) -> object:
     """Invoke authoritative runtime containment and record its platform state.
@@ -215,6 +291,9 @@ def contain(admission: Admission) -> object:
         admission.machine.start_new_epoch(report_epoch)
         admission.identity = admission.machine.identity
 
+    # The epoch transition makes old authority stale; explicit revocation keeps
+    # the lifecycle state visible and fail-closed even to epoch-unaware callers.
+    _revoke_warrant(admission)
     admission.machine.contain()
     return report
 
@@ -350,6 +429,12 @@ def recover(admission: Admission, authorization) -> int:
         raise
     admission.machine.recovered(epoch)
     admission.identity = admission.machine.identity
+    # Recovery authorization is runtime-owned and distinct from Warrant
+    # authority. Fresh execution authority is minted only after the new epoch
+    # is authoritative. Preserve legacy provider-neutral adapters that do not
+    # expose a runtime identity.
+    if admission.identity.runtime_id is not None:
+        _issue_current_warrant(admission)
     return epoch
 
 
