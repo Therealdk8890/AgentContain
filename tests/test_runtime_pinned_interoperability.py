@@ -35,7 +35,6 @@ def test_real_agentcontainment_evidence_round_trips_through_warrantkit(agent_con
     from agent_containment.cgroup_enforcer import CgroupV2Enforcer
     from agent_containment.containment import ContainmentController
     from agent_containment.control import ContainmentService
-    from agent_containment.credentials import CredentialStore
     from agent_containment.linux_supervisor import LinuxCgroupSupervisor
     from agent_containment.runtime import Runtime
     from agent_containment.runtime_observation import RuntimeObservationSource
@@ -50,11 +49,7 @@ def test_real_agentcontainment_evidence_round_trips_through_warrantkit(agent_con
     try:
         runtime = Runtime(agent_id)
         enforcer = CgroupV2Enforcer({agent_id: cgroup})
-        controller = ContainmentController(
-            runtime,
-            credentials=CredentialStore(runtime=runtime),
-            enforcers=[enforcer],
-        )
+        controller = ContainmentController(runtime, enforcers=[enforcer])
         adapter = AgentContainmentRuntimeAdapter(
             agent_id,
             controller,
@@ -122,6 +117,7 @@ def test_real_enforcement_evidence_recovery_lifecycle_is_epoch_fenced(agent_cont
     from agent_containment.cgroup_enforcer import CgroupV2Enforcer
     from agent_containment.containment import ContainmentController
     from agent_containment.control import ContainmentService
+    from agent_containment.credentials import CredentialStore
     from agent_containment.linux_supervisor import LinuxCgroupSupervisor
     from agent_containment.runtime import Runtime
     from agent_containment.runtime_observation import RuntimeObservationSource
@@ -145,7 +141,7 @@ def test_real_enforcement_evidence_recovery_lifecycle_is_epoch_fenced(agent_cont
     try:
         runtime = Runtime(agent_id)
         enforcer = CgroupV2Enforcer({agent_id: cgroup})
-        controller = ContainmentController(runtime, enforcers=[enforcer])
+        controller = ContainmentController(\n            runtime,\n            credentials=CredentialStore(runtime=runtime),\n            enforcers=[enforcer],\n        )
         adapter = AgentContainmentRuntimeAdapter(
             agent_id,
             controller,
