@@ -102,18 +102,33 @@ def validate_runtime_pinned_binding(
     if observation_record.get("state") not in {"TERMINATED", "FENCED", "contained", "halted"}:
         raise ValueError("runtime binding observation state must be TERMINATED, FENCED, contained, or halted")
 
-    times = []
-    for label, item, key in (("authority", authority_record, "revoked_at"), ("enforcement", enforcement_record, "occurred_at"), ("observation", observation_record, "observed_at")):
-        value = item.get(key)
-        if not isinstance(value, str):
-            raise ValueError(f"runtime binding {label} {key} is required")
-        try:
-            times.append(datetime.fromisoformat(value.replace("Z", "+00:00")))
-        except ValueError as exc:
-            raise ValueError(f"runtime binding {label} {key} is not ISO-8601") from exc
-    if times[1] < times[0]:
+    def _timestamp(label: str, value: Any):
+        if isinstance(value, bool):
+            raise ValueError(f"runtime binding {label} timestamp is invalid")
+        if isinstance(value, (int, float)):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValueError(f"runtime binding {label} timestamp is not ISO-8601") from exc
+        raise ValueError(f"runtime binding {label} timestamp is required")
+
+    times = [
+        _timestamp("authority revoked_at", authority_record.get("revoked_at")),
+        _timestamp("enforcement occurred_at", enforcement_record.get("occurred_at")),
+        _timestamp("observation observed_at", observation_record.get("observed_at")),
+    ]
+    # Runtime observation currently exports epoch time as a numeric value,
+    # while authority/enforcement records use ISO-8601 strings. Convert only
+    # for ordering; the canonical record retains its producer-native value.
+    def _seconds(value):
+        return value.timestamp() if isinstance(value, datetime) else value
+
+    seconds = [_seconds(value) for value in times]
+    if seconds[1] < seconds[0]:
         raise ValueError("runtime binding enforcement predates authority revocation")
-    if times[2] < times[1]:
+    if seconds[2] < seconds[1]:
         raise ValueError("runtime binding observation predates enforcement")
 
 
