@@ -318,7 +318,9 @@ def runtime_pinned_evidence(
         "observation": {
             "digest": observation_digest,
             "record": observation_payload,
-            "state": "TERMINATED" if observation_payload["state"] == "halted" else "FENCED",
+            # Preserve the independently observed canonical runtime state; do not
+            # invent a second semantic label outside the digested record.
+            "state": observation_payload["state"],
             "observed_at": observation_payload["observed_at"],
         },
     }
