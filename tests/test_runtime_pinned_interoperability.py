@@ -1,6 +1,7 @@
 """Cross-repo runtime-pinned evidence interoperability tests."""
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -55,7 +56,7 @@ def test_real_agentcontainment_evidence_round_trips_through_warrantkit(agent_con
             ContainmentService(),
         )
 
-        workload = __import__("subprocess").Popen(
+        workload = subprocess.Popen(
             [sys.executable, "-c", "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)"]
         )
         supervisor.attach_pid(cgroup, workload.pid)
