@@ -221,6 +221,43 @@ def detect(admission: Admission, details: dict[str, str] | None = None):
     return admission.machine.detect(details)
 
 
+
+def _revoke_warrant(admission: Admission) -> None:
+    if admission.warrant is not None and admission.warrant.lifecycle.state == RevocationState.ACTIVE:
+        admission.warrant = admission.warrant.revoke(
+            revoked_at=datetime.now(timezone.utc)
+        )
+
+
+def _issue_current_warrant(admission: Admission) -> Warrant:
+    if admission.identity.runtime_id is None:
+        raise RuntimeError("runtime identity is required for Warrant authority")
+    issued_at = datetime.now(timezone.utc)
+    warrant = Warrant.issue(
+        warrant_id=str(uuid4()),
+        issuer="warrantkit",
+        agent_id=admission.identity.agent_id,
+        execution_id=admission.identity.execution_id,
+        policy=admission.policy,
+        runtime_id=admission.identity.runtime_id,
+        epoch=admission.identity.epoch,
+        issued_at=issued_at,
+        expires_at=issued_at + timedelta(hours=1),
+        capabilities=tuple(admission.policy.policy.capabilities),
+    )
+    verify_warrant(
+        warrant,
+        execution_id=admission.identity.execution_id,
+        agent_id=admission.identity.agent_id,
+        policy_id=admission.identity.policy_id,
+        policy_digest=admission.identity.policy_digest,
+        runtime_id=admission.identity.runtime_id,
+        epoch=admission.identity.epoch,
+        now=issued_at,
+    )
+    admission.warrant = warrant
+    return warrant
+
 def contain(admission: Admission) -> object:
     """Invoke authoritative runtime containment and record its platform state.
 
@@ -254,6 +291,9 @@ def contain(admission: Admission) -> object:
         admission.machine.start_new_epoch(report_epoch)
         admission.identity = admission.machine.identity
 
+    # The epoch transition makes old authority stale; explicit revocation keeps
+    # the lifecycle state visible and fail-closed even to epoch-unaware callers.
+    _revoke_warrant(admission)
     admission.machine.contain()
     return report
 
@@ -389,6 +429,10 @@ def recover(admission: Admission, authorization) -> int:
         raise
     admission.machine.recovered(epoch)
     admission.identity = admission.machine.identity
+    # Recovery authorization is runtime-owned and distinct from Warrant
+    # authority. Fresh execution authority is minted only after the new epoch
+    # is authoritative.
+    _issue_current_warrant(admission)
     return epoch
 
 
