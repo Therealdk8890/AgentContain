@@ -109,6 +109,14 @@ class AgentContainmentRuntimeAdapter:
         return self.controller.runtime.runtime_id
 
     @property
+    def authority_revocation_evidence_record(self):
+        """Return runtime-produced authority revocation evidence for the last containment."""
+        report = self.controller.last_report
+        export = getattr(report, "authority_revocation_evidence_record", None)
+        if export is None:
+            raise RuntimeError("runtime engine does not expose authority revocation evidence")
+        return export(self.runtime_id)
+
     def credential_store(self):
         """Reference credential lease store owned by the runtime controller.
 
@@ -258,7 +266,7 @@ def verify(admission: Admission, *, runtime_binding: dict | None = None):
 def runtime_pinned_evidence(
     admission: Admission,
     *,
-    authority_record: dict,
+    authority_record: dict | None = None,
     observation,
 ) -> EvidenceEnvelope:
     """Bind real AgentContainment enforcement and observation to one epoch."""
@@ -286,6 +294,11 @@ def runtime_pinned_evidence(
     if observation_payload.get("state") not in {"contained", "halted"} or observation_payload.get("can_execute") is not False:
         raise RuntimeError("runtime observation does not prove a non-executable terminal state")
 
+    if authority_record is None:
+        authority_export = getattr(admission.engine, "authority_revocation_evidence_record", None)
+        if authority_export is None:
+            raise RuntimeError("runtime engine does not expose authority revocation evidence")
+        authority_record = authority_export()
     authority = dict(authority_record)
     authority.setdefault("runtime_id", runtime_id)
     authority.setdefault("agent_id", identity.agent_id)
