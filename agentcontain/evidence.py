@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from typing import Any, Mapping
@@ -16,6 +17,119 @@ VALID_STATUSES = {"observed", "verified", "degraded", "tampered", "incomplete"}
 def canonical_json(value: Any) -> str:
     """Return deterministic JSON suitable for hashing, storage, and transport."""
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def validate_runtime_pinned_binding(
+    binding: Mapping[str, Any],
+    execution: Mapping[str, Any],
+) -> None:
+    """Fail closed unless independent runtime records share one epoch."""
+    import re
+    from datetime import datetime
+
+    if not isinstance(binding, Mapping):
+        raise TypeError("runtime binding must be a mapping")
+    required = {"schema_version", "runtime_id", "agent_id", "epoch", "authority", "enforcement", "observation"}
+    if set(binding) != required:
+        raise ValueError("runtime binding has an invalid shape")
+    if binding["schema_version"] != "agentcontain.runtime-binding/v1":
+        raise ValueError("unsupported runtime binding schema")
+    if not isinstance(binding["runtime_id"], str) or not binding["runtime_id"].strip():
+        raise ValueError("runtime binding runtime_id must not be empty")
+    if binding["agent_id"] != execution["agent_id"]:
+        raise ValueError("runtime binding agent_id does not match execution")
+    expected_runtime_id = execution.get("runtime_id")
+    if expected_runtime_id is not None and binding["runtime_id"] != expected_runtime_id:
+        raise ValueError("runtime binding runtime_id does not match execution")
+    if binding["epoch"] != execution["epoch"]:
+        raise ValueError("runtime binding epoch does not match execution")
+    if isinstance(binding["epoch"], bool) or not isinstance(binding["epoch"], int) or binding["epoch"] < 1:
+        raise ValueError("runtime binding epoch must be a positive integer")
+
+    authority, enforcement, observation = binding["authority"], binding["enforcement"], binding["observation"]
+    if not all(isinstance(item, Mapping) for item in (authority, enforcement, observation)):
+        raise TypeError("runtime binding authority, enforcement, and observation must be mappings")
+    digest_re = re.compile(r"^sha256:[0-9a-f]{64}$")
+    for label, item in (("authority", authority), ("enforcement", enforcement), ("observation", observation)):
+        if not isinstance(item.get("digest"), str) or not digest_re.fullmatch(item["digest"]):
+            raise ValueError(f"runtime binding {label} digest is invalid")
+        payload = item.get("record")
+        if not isinstance(payload, Mapping):
+            raise ValueError(f"runtime binding {label} record is required")
+        expected_digest = "sha256:" + hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
+        if item["digest"] != expected_digest:
+            raise ValueError(f"runtime binding {label} digest does not match record")
+        if payload.get("runtime_id") != binding["runtime_id"]:
+            raise ValueError(f"runtime binding {label} runtime_id does not match")
+        if payload.get("agent_id") != binding["agent_id"]:
+            raise ValueError(f"runtime binding {label} agent_id does not match")
+        if payload.get("epoch") != binding["epoch"]:
+            raise ValueError(f"runtime binding {label} epoch does not match")
+    authority_record = authority["record"]
+    enforcement_record = enforcement["record"]
+    observation_record = observation["record"]
+
+    # Convenience fields are untrusted transport metadata. Check their
+    # security semantics before canonical-record consistency so a self-claim
+    # or impossible ordering cannot be hidden behind a generic mismatch.
+    if enforcement.get("external_boundary") is False:
+        raise ValueError("runtime binding enforcement must be external to the agent")
+    observed_at = observation.get("observed_at")
+    occurred_at = enforcement_record.get("occurred_at")
+    if isinstance(observed_at, str) and isinstance(occurred_at, str):
+        try:
+            observed_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+            occurred_time = datetime.fromisoformat(occurred_at.replace("Z", "+00:00"))
+        except ValueError:
+            observed_time = occurred_time = None
+        if observed_time is not None and occurred_time is not None and observed_time < occurred_time:
+            raise ValueError("runtime binding observation predates enforcement")
+
+    for label, item, record, fields in (
+        ("authority", authority, authority_record, ("revoked", "revoked_at")),
+        ("enforcement", enforcement, enforcement_record, ("action", "external_boundary", "occurred_at")),
+        ("observation", observation, observation_record, ("state", "observed_at")),
+    ):
+        for field in fields:
+            if field in item and item[field] != record.get(field):
+                raise ValueError(f"runtime binding {label} {field} does not match record")
+    if authority_record.get("revoked") is not True:
+        raise ValueError("runtime binding requires explicit authority revocation evidence")
+    if enforcement_record.get("action") not in {"KILL", "FENCE"}:
+        raise ValueError("runtime binding enforcement action must be KILL or FENCE")
+    if enforcement_record.get("external_boundary") is not True:
+        raise ValueError("runtime binding enforcement must be external to the agent")
+    if observation_record.get("state") not in {"TERMINATED", "FENCED", "contained", "halted"}:
+        raise ValueError("runtime binding observation state must be TERMINATED, FENCED, contained, or halted")
+
+    def _timestamp(label: str, value: Any):
+        if isinstance(value, bool):
+            raise ValueError(f"runtime binding {label} timestamp is invalid")
+        if isinstance(value, (int, float)):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValueError(f"runtime binding {label} timestamp is not ISO-8601") from exc
+        raise ValueError(f"runtime binding {label} timestamp is required")
+
+    times = [
+        _timestamp("authority revoked_at", authority_record.get("revoked_at")),
+        _timestamp("enforcement occurred_at", enforcement_record.get("occurred_at")),
+        _timestamp("observation observed_at", observation_record.get("observed_at")),
+    ]
+    # Runtime observation currently exports epoch time as a numeric value,
+    # while authority/enforcement records use ISO-8601 strings. Convert only
+    # for ordering; the canonical record retains its producer-native value.
+    def _seconds(value):
+        return value.timestamp() if isinstance(value, datetime) else value
+
+    seconds = [_seconds(value) for value in times]
+    if seconds[1] < seconds[0]:
+        raise ValueError("runtime binding enforcement predates authority revocation")
+    if seconds[2] < seconds[1]:
+        raise ValueError("runtime binding observation predates enforcement")
 
 
 @dataclass(frozen=True)
@@ -139,6 +253,40 @@ class EvidenceEnvelope:
             schema_version=SCHEMA_VERSION,
         )
 
+    def with_runtime_pinned_evidence(
+        self,
+        binding: Mapping[str, Any],
+    ) -> "EvidenceEnvelope":
+        """Bind independent runtime evidence to this exact execution epoch.
+
+        This does not manufacture host proof. The binding must carry digests
+        produced by the authority, enforcement, and observation boundaries.
+        WarrantKit only validates that those independently produced records
+        refer to the same runtime, agent, epoch, and ordered enforcement path.
+        """
+        validate_runtime_pinned_binding(binding, self.execution)
+        proof = dict(self.proof)
+        proof["runtime_binding"] = dict(binding)
+        verification = dict(self.verification)
+        verification.update({
+            "status": "verified",
+            "method": "runtime-pinned-second-evidence",
+            "scope": "external-runtime-enforcement",
+        })
+        return EvidenceEnvelope(
+            execution=self.execution,
+            events=self.events,
+            enforcement=self.enforcement,
+            verification=verification,
+            proof=proof,
+            receipt=self.receipt,
+            governance=self.governance,
+            provenance=self.provenance,
+            external_evidence=self.external_evidence,
+            schema_version=SCHEMA_VERSION,
+        )
+
+
     def validate(self) -> None:
         required = {"execution_id", "agent_id", "policy_id", "policy_digest", "epoch"}
         missing = required - set(self.execution)
@@ -165,6 +313,9 @@ class EvidenceEnvelope:
         if sequences and sequences != list(range(1, len(sequences) + 1)):
             raise ValueError("event sequence must be contiguous starting at 1")
 
+        runtime_binding = self.proof.get("runtime_binding")
+        if runtime_binding is not None:
+            validate_runtime_pinned_binding(runtime_binding, self.execution)
         if status == "verified" and not self.events:
             raise ValueError("verified evidence requires at least one event")
 
