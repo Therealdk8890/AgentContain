@@ -23,7 +23,15 @@ The current policy fields have deliberately bounded semantics:
 - allowed_egress is declarative until an enforcement provider explicitly consumes it. Its presence in a policy, digest, or WarrantKit evidence record does not by itself establish host-level egress enforcement.
 - Runtime egress enforcement is owned by the selected enforcement provider. Provider-specific enforcement evidence must come from that provider rather than being inferred from the policy field.
 
-Warrant issuance MUST NOT silently convert a declarative policy field into an enforcement claim. A future egress binding must define the accepted semantics, provider configuration, and independent verification path before allowed_egress becomes an enforced authority dimension.
+Warrant issuance MUST NOT silently convert a declarative policy field into an enforcement claim. The egress binding contract defines the semantics and verification boundary for a provider to consume allowed_egress.
+
+## Egress binding
+
+The platform's egress binding boundary is defined separately in `docs/EGRESS_BINDING_CONTRACT.md`.
+
+An implementation may consume allowed_egress only through an explicit enforcement-provider binding. That binding must remain scoped to the accepted policy digest, execution identity, runtime, and epoch. Provider evidence is authoritative only for the provider operation and verification it documents.
+
+The current portable policy syntax is `host:port`. Wildcards, CIDRs, URL paths, proxy semantics, dynamic discovery, and other broader forms are intentionally deferred until their enforcement and verification semantics are defined.
 
 ## Execution identity
 
