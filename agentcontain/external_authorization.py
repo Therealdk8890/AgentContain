@@ -94,6 +94,12 @@ class ExternalAuthorizationDecision:
             raise ValueError("an authorization expiry is required")
         if now.tzinfo is None or expiry.tzinfo is None:
             raise ValueError("warrant validity timestamps must be timezone-aware")
+        if self.issued_at is not None and now < self.issued_at:
+            raise ValueError("warrant issued_at cannot precede external authorization")
+        if self.expires_at is not None and expiry > self.expires_at:
+            raise ValueError("warrant expires_at cannot extend external authorization")
+        if expiry <= now:
+            raise ValueError("warrant expires_at must be after issued_at")
         return Warrant.issue(
             warrant_id=f"external:{self.decision_id}",
             issuer=self.issuer,
