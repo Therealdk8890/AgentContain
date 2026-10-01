@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Protocol
+from uuid import uuid4
 
 from .evidence import EvidenceEnvelope, validate_runtime_pinned_binding
 from .fleet import FleetRegistry
@@ -11,6 +13,7 @@ from .identity import ExecutionIdentity
 from .policy import Policy
 from .policy_distribution import PolicyBundle, PolicyRegistry
 from .state import PlatformStateMachine
+from .warrant import Warrant, RevocationState, verify_warrant
 
 
 class ContainmentResult(Protocol):
@@ -87,6 +90,7 @@ class Admission:
     machine: PlatformStateMachine
     engine: EnforcementEngine
     policy: PolicyBundle
+    warrant: Warrant | None = None
 
 
 class AgentContainmentRuntimeAdapter:
