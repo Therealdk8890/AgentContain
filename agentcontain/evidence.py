@@ -68,6 +68,14 @@ def validate_runtime_pinned_binding(
     authority_record = authority["record"]
     enforcement_record = enforcement["record"]
     observation_record = observation["record"]
+    for label, item, record, fields in (
+        ("authority", authority, authority_record, ("revoked", "revoked_at")),
+        ("enforcement", enforcement, enforcement_record, ("action", "external_boundary", "occurred_at")),
+        ("observation", observation, observation_record, ("state", "observed_at")),
+    ):
+        for field in fields:
+            if field in item and item[field] != record.get(field):
+                raise ValueError(f"runtime binding {label} {field} does not match record")
     if authority_record.get("revoked") is not True:
         raise ValueError("runtime binding requires explicit authority revocation evidence")
     if enforcement_record.get("action") not in {"KILL", "FENCE"}:
