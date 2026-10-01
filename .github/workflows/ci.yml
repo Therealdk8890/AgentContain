@@ -71,5 +71,6 @@ jobs:
       - name: Run real workload containment proof
         env:
           AGENT_CONTAIN_RUN_REAL_CGROUP: "1"
+          WARRANTKIT_RUN_RUNTIME_INTEROP: "1"
         run: |
-          sudo -E "$pythonLocation/bin/python" -m pytest -q tests/integration/test_real_cgroup_execution.py
+          sudo -E "$pythonLocation/bin/python" -m pytest -q tests/integration/test_real_cgroup_execution.py tests/test_runtime_pinned_interoperability.py
