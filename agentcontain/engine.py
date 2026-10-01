@@ -105,6 +105,10 @@ class AgentContainmentRuntimeAdapter:
         self._credential_authority = CredentialAuthority(controller)
 
     @property
+    def runtime_id(self) -> str:
+        return self.controller.runtime.runtime_id
+
+    @property
     def credential_store(self):
         """Reference credential lease store owned by the runtime controller.
 
