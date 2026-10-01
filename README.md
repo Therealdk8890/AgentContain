@@ -34,7 +34,7 @@ The table below distinguishes implemented platform capabilities from environment
 | Capability | Current status | Evidence boundary |
 |---|---|---|
 | External authorization and admission | **Implemented · CI-tested** | Policy/admission and execution identity are enforced outside the agent runtime. |
-| Runtime containment, kill, and fencing | **Implemented · CI-tested** | Platform lifecycle/coordination is CI-tested; the real kernel kill proof is the separate privileged Linux cgroup-v2 integration test below. |
+| Runtime containment, kill, and fencing | **Implemented · lifecycle CI-tested** | Platform lifecycle/coordination is CI-tested; the real kernel kill proof is the separate privileged Linux cgroup-v2 integration test below. |
 | Epoch fencing / stale-authority invalidation | **Implemented · CI-tested** | End-to-end containment → recovery → evidence regression is green on `main`. |
 | Fail-closed recovery | **Implemented · CI-tested** | Recovery is runtime-authoritative; failed recovery is compensated back to containment. |
 | Evidence envelopes and epoch scoping | **Implemented · CI-tested** | Structured evidence rejects stale runtime proof and preserves prior epoch history separately. |
@@ -88,7 +88,7 @@ WarrantKit is a platform built from components with distinct responsibilities an
 
 The cross-source contract is implemented at the reference/typed-evidence boundary; a generalized correlation engine that automatically reconciles all four sources and emits conflict objects is not yet shipped.
 
-The important boundary is **not** that WarrantKit replaces these components or appoints one of them as the authority over the facts. The four core evidence sources — Warden, DProvenanceKit, ClaimProofKit, and AgentContainment — produce independently derived evidence. WarrantKit correlates that evidence by execution identity, policy identity, epoch, and evidence integrity. Agreement increases confidence; disagreement becomes an explicit evidence conflict rather than being silently resolved.
+The important boundary is **not** that WarrantKit replaces these components or appoints one of them as the authority over the facts. The four core evidence sources — Warden, DProvenanceKit, ClaimProofKit, and AgentContainment — produce independently derived evidence. WarrantKit's current shipped boundary is the cross-source contract and typed external references; a generalized correlator is not yet shipped. The intended correlation model is to relate evidence by execution identity, policy identity, epoch, and evidence integrity, with disagreement surfaced as an explicit evidence conflict rather than silently resolved.
 
 A simplified platform flow is:
 
@@ -300,7 +300,7 @@ The open package provides these as **local governance primitives**. They do not 
              runtime enforcement
 ```
 
-WarrantKit correlates independently derived evidence from these sources. The sources do not form a hierarchy of epistemic authority: each is responsible for facts within its own evidence boundary. Agreement is corroboration; disagreement is an evidence conflict that must remain visible. AgentContainment remains public and independently usable as the security-critical runtime enforcement engine.
+WarrantKit is designed to correlate independently derived evidence from these sources. The current shipped boundary is the cross-source contract and typed external references; generalized automatic correlation and conflict objects are not yet shipped. The sources do not form a hierarchy of epistemic authority: each is responsible for facts within its own evidence boundary. Agreement is corroboration; disagreement is an evidence conflict that must remain visible when correlation is performed. AgentContainment remains public and independently usable as the security-critical runtime enforcement engine.
 
 ## License
 
