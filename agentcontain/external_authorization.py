@@ -80,6 +80,14 @@ class ExternalAuthorizationDecision:
             raise ValueError("external authorization policy_id does not match accepted policy")
         if self.policy_digest != policy.digest:
             raise ValueError("external authorization policy_digest does not match accepted policy")
+        accepted_capabilities = set(policy.capabilities)
+        requested_capabilities = set(self.capabilities)
+        if not requested_capabilities.issubset(accepted_capabilities):
+            unexpected = sorted(requested_capabilities - accepted_capabilities)
+            raise ValueError(
+                "external authorization requests capabilities outside accepted policy: "
+                + ", ".join(unexpected)
+            )
         now = issued_at or self.issued_at or datetime.now(timezone.utc)
         expiry = expires_at or self.expires_at
         if expiry is None:
