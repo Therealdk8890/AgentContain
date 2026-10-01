@@ -37,6 +37,17 @@ from .policy_reconciliation import (
 from .policy_rollout import Rollout, RolloutState
 from .policy_distribution import PolicyBundle, PolicyRegistry
 from .state import LifecycleState, PlatformStateMachine
+from .warrant import (
+    EvidenceRequirements,
+    RevocationState,
+    Warrant,
+    WarrantAuthority,
+    WarrantLifecycle,
+    WarrantRuntime,
+    WarrantSubject,
+    WarrantValidity,
+    verify_warrant,
+)
 from .store import EvidenceStore, InMemoryEvidenceStore
 
 __all__ = [
@@ -87,4 +98,13 @@ __all__ = [
     "recover",
     "recontain",
     "verify",
+    "EvidenceRequirements",
+    "RevocationState",
+    "Warrant",
+    "WarrantAuthority",
+    "WarrantLifecycle",
+    "WarrantRuntime",
+    "WarrantSubject",
+    "WarrantValidity",
+    "verify_warrant",
 ]
