@@ -117,6 +117,7 @@ class AgentContainmentRuntimeAdapter:
             raise RuntimeError("runtime engine does not expose authority revocation evidence")
         return export(self.runtime_id)
 
+    @property
     def credential_store(self):
         """Reference credential lease store owned by the runtime controller.
 
