@@ -161,25 +161,60 @@ def admit(
     engine: EnforcementEngine,
     registry: PolicyRegistry | None = None,
     runtime_id: str | None = None,
+    warrant_issuer: str = "warrantkit",
+    warrant_ttl: timedelta = timedelta(hours=1),
 ) -> Admission:
-    """Validate and admit one execution against the locally accepted policy."""
+    """Validate, issue, and admit one execution under a bounded Warrant.
+
+    A runtime identifier is required for a Warrant. Provider-neutral test/fake
+    engines may omit runtime identity and retain the legacy admission shape.
+    """
     registry = registry or PolicyRegistry()
     bundle = registry.accept_policy(policy)
+    if warrant_ttl <= timedelta(0):
+        raise ValueError("warrant_ttl must be positive")
     identity = ExecutionIdentity.create(
         agent_id,
         bundle.policy_id,
         bundle.policy_digest,
         runtime_id=runtime_id,
     )
+    warrant = None
+    if identity.runtime_id is not None:
+        issued_at = datetime.now(timezone.utc)
+        warrant = Warrant.issue(
+            warrant_id=str(uuid4()),
+            issuer=warrant_issuer,
+            agent_id=identity.agent_id,
+            execution_id=identity.execution_id,
+            policy=bundle,
+            runtime_id=identity.runtime_id,
+            epoch=identity.epoch,
+            issued_at=issued_at,
+            expires_at=issued_at + warrant_ttl,
+            capabilities=tuple(bundle.policy.capabilities),
+        )
+        verify_warrant(
+            warrant,
+            execution_id=identity.execution_id,
+            agent_id=identity.agent_id,
+            policy_id=identity.policy_id,
+            policy_digest=identity.policy_digest,
+            runtime_id=identity.runtime_id,
+            epoch=identity.epoch,
+            now=issued_at,
+        )
     machine = PlatformStateMachine(identity)
-    machine.admit()
+    machine.admit(
+        details={"warrant_id": warrant.warrant_id} if warrant is not None else None
+    )
     return Admission(
         identity=identity,
         machine=machine,
         engine=engine,
         policy=bundle,
+        warrant=warrant,
     )
-
 
 def detect(admission: Admission, details: dict[str, str] | None = None):
     """Record an observed anomaly without changing runtime enforcement."""
