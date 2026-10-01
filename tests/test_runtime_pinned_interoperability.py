@@ -141,7 +141,11 @@ def test_real_enforcement_evidence_recovery_lifecycle_is_epoch_fenced(agent_cont
     try:
         runtime = Runtime(agent_id)
         enforcer = CgroupV2Enforcer({agent_id: cgroup})
-        controller = ContainmentController(\n            runtime,\n            credentials=CredentialStore(runtime=runtime),\n            enforcers=[enforcer],\n        )
+        controller = ContainmentController(
+            runtime,
+            credentials=CredentialStore(runtime=runtime),
+            enforcers=[enforcer],
+        )
         adapter = AgentContainmentRuntimeAdapter(
             agent_id,
             controller,
