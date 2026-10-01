@@ -21,67 +21,82 @@ def agent_containment_src():
         sys.path.remove(str(src))
 
 
-class TestEnforcer:
-    name = "test-external"
-
-    def contain(self, agent_id):
-        from agent_containment.enforcer import EnforcementResult, EnforcementStatus
-
-        return EnforcementResult(self.name, EnforcementStatus.ENFORCED, "test boundary enforced")
-
-    def verify_contained(self, agent_id):
-        from agent_containment.enforcer import EnforcementResult, EnforcementStatus
-
-        return EnforcementResult(self.name, EnforcementStatus.ENFORCED, "test boundary verified")
-
-
 @pytest.mark.skipif(
-    os.environ.get("WARRANTKIT_RUN_RUNTIME_INTEROP") != "1",
-    reason="set WARRANTKIT_RUN_RUNTIME_INTEROP=1 to run the cross-repo integration contract",
+    not (
+        sys.platform == "linux"
+        and os.geteuid() == 0
+        and os.environ.get("WARRANTKIT_RUN_RUNTIME_INTEROP") == "1"
+        and os.path.exists("/sys/fs/cgroup/cgroup.controllers")
+    ),
+    reason="requires Linux cgroup-v2, root, and WARRANTKIT_RUN_RUNTIME_INTEROP=1",
 )
 def test_real_agentcontainment_evidence_round_trips_through_warrantkit(agent_containment_src):
+    from agent_containment.cgroup_enforcer import CgroupV2Enforcer
     from agent_containment.containment import ContainmentController
     from agent_containment.control import ContainmentService
+    from agent_containment.linux_supervisor import LinuxCgroupSupervisor
     from agent_containment.runtime import Runtime
     from agent_containment.runtime_observation import RuntimeObservationSource
 
-    from agentcontain.engine import (
-        AgentContainmentRuntimeAdapter,
-        admit,
-        contain,
-        runtime_pinned_evidence,
-    )
+    from agentcontain.engine import AgentContainmentRuntimeAdapter, admit, contain, runtime_pinned_evidence
     from agentcontain.policy import Policy
 
-    agent_id = "interop-agent"
-    runtime = Runtime(agent_id)
-    controller = ContainmentController(runtime, enforcers=[TestEnforcer()])
-    adapter = AgentContainmentRuntimeAdapter(
-        agent_id,
-        controller,
-        ContainmentService(),
-    )
+    supervisor = LinuxCgroupSupervisor("auto")
+    agent_id = f"interop-agent-{os.getpid()}"
+    cgroup = supervisor.create_agent(agent_id)
+    workload = None
+    try:
+        runtime = Runtime(agent_id)
+        enforcer = CgroupV2Enforcer({agent_id: cgroup})
+        controller = ContainmentController(runtime, enforcers=[enforcer])
+        adapter = AgentContainmentRuntimeAdapter(
+            agent_id,
+            controller,
+            ContainmentService(),
+        )
 
-    admission = admit(
-        Policy("production"),
-        agent_id=agent_id,
-        runtime_id=runtime.runtime_id,
-        engine=adapter,
-    )
+        workload = __import__("subprocess").Popen(
+            [sys.executable, "-c", "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)"]
+        )
+        supervisor.attach_pid(cgroup, workload.pid)
+        assert supervisor.pid_in_cgroup(workload.pid, cgroup)
+        assert supervisor.is_populated(cgroup)
 
-    report = contain(admission)
-    assert report.epoch == admission.identity.epoch == 1
+        admission = admit(
+            Policy("production"),
+            agent_id=agent_id,
+            runtime_id=runtime.runtime_id,
+            engine=adapter,
+        )
+        report = contain(admission)
+        workload.wait(timeout=5)
 
-    observation = RuntimeObservationSource().observe(runtime)
-    envelope = runtime_pinned_evidence(admission, observation=observation)
+        assert report.epoch == admission.identity.epoch == 1
+        assert report.external_verified is True
+        assert report.certified is True
+        assert workload.returncode is not None
+        assert workload.returncode < 0
+        assert not supervisor.is_populated(cgroup)
 
-    assert envelope.verification["status"] == "verified"
-    binding = envelope.proof["runtime_binding"]
-    assert binding["runtime_id"] == runtime.runtime_id
-    assert binding["agent_id"] == agent_id
-    assert binding["epoch"] == 1
-    assert binding["authority"]["record"]["revoked"] is True
-    assert binding["enforcement"]["record"]["external_boundary"] is True
-    assert binding["enforcement"]["record"]["action"] == "KILL"
-    assert binding["observation"]["record"]["can_execute"] is False
-    assert binding["observation"]["record"]["state"] == "contained"
+        observation = RuntimeObservationSource().observe(runtime)
+        envelope = runtime_pinned_evidence(admission, observation=observation)
+
+        assert envelope.verification["status"] == "verified"
+        binding = envelope.proof["runtime_binding"]
+        assert binding["runtime_id"] == runtime.runtime_id
+        assert binding["agent_id"] == agent_id
+        assert binding["epoch"] == 1
+        assert binding["authority"]["record"]["revoked"] is True
+        assert binding["enforcement"]["record"]["external_boundary"] is True
+        assert binding["enforcement"]["record"]["action"] == "KILL"
+        assert binding["observation"]["record"]["can_execute"] is False
+        assert binding["observation"]["record"]["state"] == "contained"
+    finally:
+        if workload is not None and workload.poll() is None:
+            workload.kill()
+            workload.wait(timeout=5)
+        if cgroup.exists():
+            try:
+                supervisor.remove(cgroup)
+            except OSError:
+                pass
