@@ -12,6 +12,19 @@ The platform controller and its enforcement providers operate outside the agent'
 
 Authoritative security state comes from externally enforced operations and independently verifiable results.
 
+## Policy semantics
+
+A Policy is the locally accepted source of policy identity and authorization scope.
+
+The current policy fields have deliberately bounded semantics:
+
+- capabilities describes the authority that can be represented in a Warrant.
+- allowed_egress is included in canonical policy identity and therefore affects the policy digest.
+- allowed_egress is declarative until an enforcement provider explicitly consumes it. Its presence in a policy, digest, or WarrantKit evidence record does not by itself establish host-level egress enforcement.
+- Runtime egress enforcement is owned by the selected enforcement provider. Provider-specific enforcement evidence must come from that provider rather than being inferred from the policy field.
+
+Warrant issuance MUST NOT silently convert a declarative policy field into an enforcement claim. A future egress binding must define the accepted semantics, provider configuration, and independent verification path before allowed_egress becomes an enforced authority dimension.
+
 ## Execution identity
 
 A platform execution is identified by:
@@ -54,22 +67,22 @@ If compensation cannot itself be verified, the platform enters a degraded state 
 
 The initial event vocabulary is:
 
-- `admission_requested`
-- `admission_verified`
-- `containment_requested`
-- `containment_verified`
-- `anomaly_detected`
-- `fence_requested`
-- `halt_requested`
-- `verification_completed`
-- `recovery_requested`
-- `external_release_verified`
-- `runtime_recovery_complete`
-- `runtime_recovery_failed`
-- `recontainment_verified`
-- `receipt_issued`
+- admission_requested
+- admission_verified
+- containment_requested
+- containment_verified
+- anomaly_detected
+- fence_requested
+- halt_requested
+- verification_completed
+- recovery_requested
+- external_release_verified
+- runtime_recovery_complete
+- runtime_recovery_failed
+- recontainment_verified
+- receipt_issued
 
-Detection and verification are intentionally distinct evidence events: `anomaly_detected` records that a detection condition was observed, while `verification_completed` records completion of a verification procedure.
+Detection and verification are intentionally distinct evidence events: anomaly_detected records that a detection condition was observed, while verification_completed records completion of a verification procedure.
 
 Events are evidence records, not authority by themselves. The implementation must define which external operation establishes each event.
 

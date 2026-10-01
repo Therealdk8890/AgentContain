@@ -1,4 +1,9 @@
-"""Deterministic platform policy model."""
+"""Deterministic platform policy model.
+
+allowed_egress is part of policy identity and distribution, but remains
+declarative until an enforcement provider explicitly consumes it. It must not
+be treated as runtime enforcement merely because it is present in a Policy.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,12 @@ import json
 
 @dataclass(frozen=True)
 class Policy:
-    """Versioned policy describing the authority granted to an execution."""
+    """Versioned policy describing the authority granted to an execution.
+
+    allowed_egress is a declarative policy field. Its presence in the
+    canonical policy and digest does not itself configure or prove host-level
+    egress enforcement.
+    """
 
     policy_id: str
     version: int = 1

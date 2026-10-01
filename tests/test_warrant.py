@@ -86,3 +86,32 @@ def test_warrant_round_trip_keeps_evidence_out_of_authority() -> None:
     restored = Warrant.from_dict(warrant.to_dict())
     assert restored == warrant
     assert "evidence" not in restored.to_dict()["authority"]
+
+
+def test_allowed_egress_is_not_promoted_to_warrant_authority() -> None:
+    policy = Policy(
+        "production",
+        allowed_egress=("api.example.com:443",),
+        capabilities=("read",),
+    )
+    identity = ExecutionIdentity.create(
+        "agent-1",
+        policy.policy_id,
+        policy.digest,
+        runtime_id="runtime-1",
+    )
+    warrant = Warrant.issue(
+        warrant_id="w-egress",
+        issuer="controller",
+        agent_id=identity.agent_id,
+        execution_id=identity.execution_id,
+        policy=policy,
+        runtime_id=identity.runtime_id,
+        epoch=identity.epoch,
+        issued_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        expires_at=datetime(2026, 1, 1, 0, 5, tzinfo=timezone.utc),
+        capabilities=("read",),
+    )
+
+    assert "allowed_egress" not in warrant.to_dict()["authority"]
+    assert policy.allowed_egress == ("api.example.com:443",)
