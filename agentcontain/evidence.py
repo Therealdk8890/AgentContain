@@ -52,6 +52,18 @@ def validate_runtime_pinned_binding(
     for label, item in (("authority", authority), ("enforcement", enforcement), ("observation", observation)):
         if not isinstance(item.get("digest"), str) or not digest_re.fullmatch(item["digest"]):
             raise ValueError(f"runtime binding {label} digest is invalid")
+        payload = item.get("record")
+        if not isinstance(payload, Mapping):
+            raise ValueError(f"runtime binding {label} record is required")
+        expected_digest = "sha256:" + hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
+        if item["digest"] != expected_digest:
+            raise ValueError(f"runtime binding {label} digest does not match record")
+        if payload.get("runtime_id") != binding["runtime_id"]:
+            raise ValueError(f"runtime binding {label} runtime_id does not match")
+        if payload.get("agent_id") != binding["agent_id"]:
+            raise ValueError(f"runtime binding {label} agent_id does not match")
+        if payload.get("epoch") != binding["epoch"]:
+            raise ValueError(f"runtime binding {label} epoch does not match")
     if authority.get("revoked") is not True:
         raise ValueError("runtime binding requires explicit authority revocation evidence")
     if enforcement.get("action") not in {"KILL", "FENCE"}:
