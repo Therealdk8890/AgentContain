@@ -180,3 +180,23 @@ def test_tampered_runtime_record_fails_digest_binding():
             execution={"execution_id": "e", "agent_id": "agent-1", "policy_id": "p", "policy_digest": "d", "epoch": 1, "runtime_id": "runtime-1"},
             events=({"execution_id": "e", "sequence": 1, "name": "containment_verified", "epoch": 1},),
         ).with_runtime_pinned_evidence(binding)
+
+
+def test_authority_record_tampering_fails_digest_binding():
+    binding = _binding()
+    binding["authority"]["record"]["revoked"] = False
+    with pytest.raises(ValueError, match="digest does not match record"):
+        EvidenceEnvelope.from_execution(
+            execution={"execution_id": "e", "agent_id": "agent-1", "policy_id": "p", "policy_digest": "d", "epoch": 1, "runtime_id": "runtime-1"},
+            events=({"execution_id": "e", "sequence": 1, "name": "containment_verified", "epoch": 1},),
+        ).with_runtime_pinned_evidence(binding)
+
+
+def test_observation_semantics_are_taken_from_digested_record():
+    binding = _binding(state="TERMINATED")
+    binding["observation"]["state"] = "FENCED"
+    with pytest.raises(ValueError, match="digest does not match record"):
+        EvidenceEnvelope.from_execution(
+            execution={"execution_id": "e", "agent_id": "agent-1", "policy_id": "p", "policy_digest": "d", "epoch": 1, "runtime_id": "runtime-1"},
+            events=({"execution_id": "e", "sequence": 1, "name": "containment_verified", "epoch": 1},),
+        ).with_runtime_pinned_evidence(binding)
