@@ -68,6 +68,23 @@ def validate_runtime_pinned_binding(
     authority_record = authority["record"]
     enforcement_record = enforcement["record"]
     observation_record = observation["record"]
+
+    # Convenience fields are untrusted transport metadata. Check their
+    # security semantics before canonical-record consistency so a self-claim
+    # or impossible ordering cannot be hidden behind a generic mismatch.
+    if enforcement.get("external_boundary") is False:
+        raise ValueError("runtime binding enforcement must be external to the agent")
+    observed_at = observation.get("observed_at")
+    occurred_at = enforcement_record.get("occurred_at")
+    if isinstance(observed_at, str) and isinstance(occurred_at, str):
+        try:
+            observed_time = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+            occurred_time = datetime.fromisoformat(occurred_at.replace("Z", "+00:00"))
+        except ValueError:
+            observed_time = occurred_time = None
+        if observed_time is not None and occurred_time is not None and observed_time < occurred_time:
+            raise ValueError("runtime binding observation predates enforcement")
+
     for label, item, record, fields in (
         ("authority", authority, authority_record, ("revoked", "revoked_at")),
         ("enforcement", enforcement, enforcement_record, ("action", "external_boundary", "occurred_at")),
