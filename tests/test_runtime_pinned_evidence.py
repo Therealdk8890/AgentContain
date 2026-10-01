@@ -31,27 +31,32 @@ def _admission(runtime_id="runtime-1"):
 
 
 def _binding(*, epoch=1, runtime_id="runtime-1", action="KILL", state="TERMINATED"):
+    from agentcontain.evidence import canonical_json
+    import hashlib
+
+    def signed_record(record):
+        return {
+            "digest": "sha256:" + hashlib.sha256(canonical_json(record).encode("utf-8")).hexdigest(),
+            "record": record,
+        }
+
     return {
         "schema_version": "agentcontain.runtime-binding/v1",
         "runtime_id": runtime_id,
         "agent_id": "agent-1",
         "epoch": epoch,
-        "authority": {
-            "digest": "sha256:" + "1" * 64,
-            "revoked": True,
-            "revoked_at": "2026-09-30T17:00:00Z",
-        },
-        "enforcement": {
-            "digest": "sha256:" + "2" * 64,
-            "action": action,
-            "external_boundary": True,
-            "occurred_at": "2026-09-30T17:00:01Z",
-        },
-        "observation": {
-            "digest": "sha256:" + "3" * 64,
-            "state": state,
-            "observed_at": "2026-09-30T17:00:02Z",
-        },
+        "authority": signed_record({
+            "runtime_id": runtime_id, "agent_id": "agent-1", "epoch": epoch,
+            "revoked": True, "revoked_at": "2026-09-30T17:00:00Z",
+        }) | {"revoked": True, "revoked_at": "2026-09-30T17:00:00Z"},
+        "enforcement": signed_record({
+            "runtime_id": runtime_id, "agent_id": "agent-1", "epoch": epoch,
+            "action": action, "external_boundary": True, "occurred_at": "2026-09-30T17:00:01Z",
+        }) | {"action": action, "external_boundary": True, "occurred_at": "2026-09-30T17:00:01Z"},
+        "observation": signed_record({
+            "runtime_id": runtime_id, "agent_id": "agent-1", "epoch": epoch,
+            "state": state, "observed_at": "2026-09-30T17:00:02Z",
+        }) | {"state": state, "observed_at": "2026-09-30T17:00:02Z"},
     }
 
 
@@ -165,3 +170,13 @@ def test_tampered_serialized_runtime_binding_fails_closed():
 
     with pytest.raises(ValueError, match="runtime binding epoch"):
         EvidenceEnvelope.from_dict(document)
+
+
+def test_tampered_runtime_record_fails_digest_binding():
+    binding = _binding()
+    binding["enforcement"]["record"]["action"] = "FENCE"
+    with pytest.raises(ValueError, match="digest does not match record"):
+        EvidenceEnvelope.from_execution(
+            execution={"execution_id": "e", "agent_id": "agent-1", "policy_id": "p", "policy_digest": "d", "epoch": 1, "runtime_id": "runtime-1"},
+            events=({"execution_id": "e", "sequence": 1, "name": "containment_verified", "epoch": 1},),
+        ).with_runtime_pinned_evidence(binding)
