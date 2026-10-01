@@ -431,8 +431,10 @@ def recover(admission: Admission, authorization) -> int:
     admission.identity = admission.machine.identity
     # Recovery authorization is runtime-owned and distinct from Warrant
     # authority. Fresh execution authority is minted only after the new epoch
-    # is authoritative.
-    _issue_current_warrant(admission)
+    # is authoritative. Preserve legacy provider-neutral adapters that do not
+    # expose a runtime identity.
+    if admission.identity.runtime_id is not None:
+        _issue_current_warrant(admission)
     return epoch
 
 
