@@ -19,6 +19,7 @@ from .engine import (
 )
 from .events import Event, EventLog
 from .evidence import EvidenceEnvelope, canonical_json
+from .external_authorization import ExternalAuthorizationDecision, import_authorization
 from .external_evidence import ExternalEvidenceReference
 from .fleet import Agent, FleetRegistry, FleetScope, Organization, Project, Runtime
 from .fleet_status import FleetPolicyStatus, fleet_policy_status
@@ -57,6 +58,8 @@ __all__ = [
     "EvidenceStore",
     "InMemoryEvidenceStore",
     "EvidenceEnvelope",
+    "ExternalAuthorizationDecision",
+    "import_authorization",
     "ExternalEvidenceReference",
     "Agent",
     "FleetRegistry",
