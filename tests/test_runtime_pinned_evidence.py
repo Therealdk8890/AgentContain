@@ -195,6 +195,7 @@ def test_authority_record_tampering_fails_digest_binding():
 def test_observation_semantics_are_taken_from_digested_record():
     binding = _binding(state="TERMINATED")
     binding["observation"]["state"] = "FENCED"
+    binding["observation"]["record"]["state"] = "FENCED"
     with pytest.raises(ValueError, match="digest does not match record"):
         EvidenceEnvelope.from_execution(
             execution={"execution_id": "e", "agent_id": "agent-1", "policy_id": "p", "policy_digest": "d", "epoch": 1, "runtime_id": "runtime-1"},
