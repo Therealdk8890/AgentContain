@@ -51,8 +51,9 @@ def test_external_authorization_cannot_widen_local_policy(field: str) -> None:
     decision = _decision(policy)
     values = decision.__dict__.copy()
     values[field] = "different"
+    mismatched = ExternalAuthorizationDecision(**values)
     with pytest.raises(ValueError, match=field):
-        ExternalAuthorizationDecision(**values)
+        mismatched.to_warrant(policy=policy, runtime_id="runtime-1", epoch=0)
 
 
 def test_external_authorization_cannot_supply_evidence_or_enforcement() -> None:
