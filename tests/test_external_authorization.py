@@ -1,0 +1,88 @@
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from agentcontain import ExternalAuthorizationDecision, Policy, import_authorization
+from agentcontain.warrant import verify_warrant
+
+
+NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+
+def _policy() -> Policy:
+    return Policy("production", capabilities=("read",))
+
+
+def _decision(policy: Policy) -> ExternalAuthorizationDecision:
+    return ExternalAuthorizationDecision(
+        decision_id="decision-1",
+        issuer="external-idp",
+        subject_agent_id="agent-1",
+        subject_execution_id="exec-1",
+        policy_id=policy.policy_id,
+        policy_digest=policy.digest,
+        capabilities=("read",),
+        issued_at=NOW,
+        expires_at=NOW + timedelta(minutes=5),
+    )
+
+
+def test_external_authorization_becomes_local_epoch_bound_warrant() -> None:
+    policy = _policy()
+    warrant = _decision(policy).to_warrant(
+        policy=policy, runtime_id="runtime-1", epoch=7
+    )
+
+    verify_warrant(
+        warrant,
+        execution_id="exec-1",
+        agent_id="agent-1",
+        policy_id=policy.policy_id,
+        policy_digest=policy.digest,
+        runtime_id="runtime-1",
+        epoch=7,
+        now=NOW + timedelta(minutes=1),
+    )
+
+
+@pytest.mark.parametrize("field", ["policy_id", "policy_digest"])
+def test_external_authorization_cannot_widen_local_policy(field: str) -> None:
+    policy = _policy()
+    decision = _decision(policy)
+    values = decision.__dict__.copy()
+    values[field] = "different"
+    mismatched = ExternalAuthorizationDecision(**values)
+    with pytest.raises(ValueError, match=field):
+        mismatched.to_warrant(policy=policy, runtime_id="runtime-1", epoch=0)
+
+
+def test_external_authorization_cannot_supply_evidence_or_enforcement() -> None:
+    policy = _policy()
+    document = {
+        "schema_version": "warrantkit.external-authorization/v1",
+        "decision_id": "decision-1",
+        "issuer": "external-idp",
+        "subject_agent_id": "agent-1",
+        "subject_execution_id": "exec-1",
+        "policy_id": policy.policy_id,
+        "policy_digest": policy.digest,
+        "capabilities": ["read"],
+        "constraints": {},
+        "issued_at": NOW.isoformat(),
+        "expires_at": (NOW + timedelta(minutes=5)).isoformat(),
+        "decision": "allow",
+    }
+    warrant = import_authorization(
+        document, policy=policy, runtime_id="runtime-1", epoch=2, now=NOW
+    )
+    assert "evidence" not in warrant.authority.__dict__
+    assert not hasattr(warrant, "enforcement")
+
+
+def test_deny_decision_fails_closed() -> None:
+    policy = _policy()
+    decision = _decision(policy)
+    values = decision.__dict__.copy()
+    values["decision"] = "deny"
+    with pytest.raises(ValueError, match="allow"):
+        ExternalAuthorizationDecision(**values)
