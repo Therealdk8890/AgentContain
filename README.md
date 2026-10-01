@@ -6,7 +6,9 @@
 
 > **Don't ask the agent to enforce its own boundaries. Enforce them from outside the agent trust boundary.**
 
-WarrantKit is the runtime security platform around the AgentContainment enforcement engine. It answers a practical security question: **what is an autonomous agent allowed to do, what happens when it crosses that boundary, how do we revoke its authority, and can we prove that the security boundary held?**
+WarrantKit is the platform/control layer around the AgentContainment enforcement engine. The repository currently ships local authorization, admission, runtime containment coordination, epoch fencing, recovery gating, evidence envelopes, fleet-governance primitives, and offline verification receipts. Hosted multi-tenant operations, centralized evidence retention, enterprise RBAC, and SIEM/SOAR integrations are not shipped here yet.
+
+The practical question is: **what is an autonomous agent allowed to do, what happens when it crosses that boundary, how is its authority revoked, and what evidence can be independently checked afterward?**
 
 ## The product
 
@@ -16,7 +18,9 @@ WarrantKit is designed first as an enforcement system: define policy, establish 
 
 The core workflow is:
 
-**Discover → Authorize → Enforce → Detect → Revoke → Halt/Contain → Verify → Recover → Prove**
+**Policy → Admit → Contain → Detect → Fence → Halt → Verify → Recover → Receipt**
+
+This is the lifecycle used throughout the repository.
 
 For enterprise security and governance teams, this translates into:
 
@@ -154,15 +158,9 @@ Verification establishes that the specified procedure and evidence checks succee
 
 The lifecycle also distinguishes **detection** from **verification**: detection records an anomaly; verification records completion of the defined verification procedure. They are separate evidence events.
 
-## Current quick start
+## 30-second demo
 
-The project is **WarrantKit**; the project-facing CLI is **`warrantkit`**. The legacy **`agentcontain`** command remains as a compatibility alias.
-
-The platform CLI is available as `agentcontain`.
-
-### 1. Simulated demonstration — no host privileges
-
-Start with the no-root path:
+The fastest way to see the shipped product surface is the no-root demonstration:
 
 ```bash
 git clone --recurse-submodules https://github.com/Therealdk8890/WarrantKit.git
@@ -172,7 +170,31 @@ python -m pip install .
 warrantkit demo
 ```
 
-This demonstrates the lifecycle, evidence envelope, and receipt semantics without host privileges. It is explicitly **simulated** and must not be interpreted as kernel-level containment proof.
+This path is intentionally simulated. It demonstrates the authorization/containment lifecycle, evidence envelope, verification state, and receipt semantics without claiming kernel-level enforcement.
+
+For a real Linux workload proof, use the environment-gated cgroup-v2 integration described below.
+
+## How WarrantKit differs
+
+WarrantKit is not a replacement for the runtime-security and isolation technologies it can work alongside.
+
+| Technology | Primary boundary | What WarrantKit adds |
+|---|---|---|
+| **Tetragon** | Kernel-level runtime observability and policy enforcement, including event monitoring and enforcement actions such as signals/return-value overrides. | A higher-level authorization/evidence lifecycle around agent identity, policy, runtime epochs, recovery, and portable evidence verification. |
+| **seccomp** | Linux system-call filtering for a process. | Agent-specific admission/authority lifecycle, runtime containment coordination, epoch fencing, recovery gating, and structured evidence/proof semantics around the enforcement event. |
+| **gVisor** | Sandboxed application-kernel boundary for containers. | Control-plane authorization and runtime evidence that can sit above an isolation boundary rather than replacing the isolation mechanism. |
+
+These are complementary rather than mutually exclusive. Tetragon already provides substantial runtime enforcement and observability; gVisor provides a sandboxed runtime boundary; seccomp restricts system calls. WarrantKit's narrower claim is that **agent authorization, runtime enforcement coordination, and independently verifiable evidence should remain explicit and separate from the agent itself**.
+
+## Current quick start
+
+The project is **WarrantKit**; the project-facing CLI is **`warrantkit`**. The legacy **`agentcontain`** command remains as a compatibility alias.
+
+The platform CLI is available as `warrantkit`; the legacy `agentcontain` command remains as a compatibility alias.
+
+### 1. Simulated demonstration — no host privileges
+
+The command above is the intended first run. It demonstrates the lifecycle, evidence envelope, and receipt semantics without host privileges.
 
 ### 2. Real runtime path — Linux
 
@@ -202,6 +224,33 @@ The platform threat model is documented in [`docs/THREAT_MODEL.md`](docs/THREAT_
 
 Controller isolation remains deployment-sensitive. The repository tests selected controller/agent IPC and host attack paths, but the controller, its IPC endpoint, the cgroup hierarchy, and the privileges used to enforce containment must still be protected by the deployment. The Python control plane alone is not claimed to be a kernel isolation boundary. The AgentContainment documentation describes the required host-side assumptions and current proof scope.
 
+## Shipped vs. planned
+
+**Shipped in the open repository**
+
+- External authorization and admission.
+- Runtime containment, kill/fencing coordination through the pinned AgentContainment engine.
+- Epoch fencing and stale-authority invalidation.
+- Fail-closed recovery.
+- Structured evidence envelopes and deterministic JSON export.
+- HMAC-authenticated verification receipts.
+- Local fleet inventory, policy assignment, rollout/reconciliation, and immutable status history.
+- Portable evidence export and the independent-verifier boundary.
+
+**Environment-gated**
+
+- Real Linux cgroup-v2 workload containment and independent post-kill verification.
+
+**Not shipped yet**
+
+- Hosted multi-tenant control plane.
+- Centralized/durable evidence retention service.
+- Enterprise RBAC service.
+- SIEM/SOAR and production deployment integrations.
+- Non-repudiable/asymmetric host attestation.
+
+The README intentionally does not present the unshipped items as current product capabilities.
+
 ## Architecture
 
 ```
@@ -228,7 +277,7 @@ WarrantKit
 
 The platform lifecycle is:
 
-**Policy → Admit → Enforce → Detect → Revoke → Fence/Halt → Verify → Recover under fresh authority → Receipt**
+**Policy → Admit → Contain → Detect → Fence → Halt → Verify → Recover → Receipt**
 
 ## Core engine
 
