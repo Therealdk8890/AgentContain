@@ -27,12 +27,12 @@ class TestEnforcer:
     def contain(self, agent_id):
         from agent_containment.enforcer import EnforcementResult, EnforcementStatus
 
-        return EnforcementResult(EnforcementStatus.ENFORCED, "test boundary enforced")
+        return EnforcementResult(self.name, EnforcementStatus.ENFORCED, "test boundary enforced")
 
     def verify_contained(self, agent_id):
         from agent_containment.enforcer import EnforcementResult, EnforcementStatus
 
-        return EnforcementResult(EnforcementStatus.ENFORCED, "test boundary verified")
+        return EnforcementResult(self.name, EnforcementStatus.ENFORCED, "test boundary verified")
 
 
 @pytest.mark.skipif(
