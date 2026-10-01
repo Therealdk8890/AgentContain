@@ -80,6 +80,10 @@ class ExternalAuthorizationDecision:
             raise ValueError("external authorization policy_id does not match accepted policy")
         if self.policy_digest != policy.digest:
             raise ValueError("external authorization policy_digest does not match accepted policy")
+        if self.constraints:
+            raise ValueError(
+                "external authorization constraints are unsupported until accepted policy defines constraint semantics"
+            )
         accepted_capabilities = set(policy.capabilities)
         requested_capabilities = set(self.capabilities)
         if not requested_capabilities.issubset(accepted_capabilities):

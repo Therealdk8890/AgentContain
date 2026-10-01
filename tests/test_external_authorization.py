@@ -88,6 +88,24 @@ def test_deny_decision_fails_closed() -> None:
         ExternalAuthorizationDecision(**values)
 
 
+def test_external_authorization_constraints_fail_closed_without_policy_contract() -> None:
+    policy = _policy()
+    decision = ExternalAuthorizationDecision(
+        decision_id="decision-constraints",
+        issuer="external-idp",
+        subject_agent_id="agent-1",
+        subject_execution_id="exec-constraints",
+        policy_id=policy.policy_id,
+        policy_digest=policy.digest,
+        capabilities=("read",),
+        constraints=(("resource", "production"),),
+        issued_at=NOW,
+        expires_at=NOW + timedelta(minutes=5),
+    )
+    with pytest.raises(ValueError, match="constraint semantics"):
+        decision.to_warrant(policy=policy, runtime_id="runtime-1", epoch=1)
+
+
 def test_external_authorization_cannot_grant_capability_outside_policy() -> None:
     policy = Policy("production", capabilities=("read",))
     decision = ExternalAuthorizationDecision(
