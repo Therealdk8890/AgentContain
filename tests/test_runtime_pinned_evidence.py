@@ -201,3 +201,60 @@ def test_observation_semantics_are_taken_from_digested_record():
             execution={"execution_id": "e", "agent_id": "agent-1", "policy_id": "p", "policy_digest": "d", "epoch": 1, "runtime_id": "runtime-1"},
             events=({"execution_id": "e", "sequence": 1, "name": "containment_verified", "epoch": 1},),
         ).with_runtime_pinned_evidence(binding)
+
+
+
+def test_numeric_runtime_observation_timestamp_is_accepted():
+    binding = _binding()
+    observation_record = dict(binding["observation"]["record"])
+    observation_record["observed_at"] = 1790790002.0
+    import hashlib
+    from agentcontain.evidence import canonical_json
+
+    binding["observation"]["record"] = observation_record
+    binding["observation"]["observed_at"] = observation_record["observed_at"]
+    binding["observation"]["digest"] = "sha256:" + hashlib.sha256(
+        canonical_json(observation_record).encode("utf-8")
+    ).hexdigest()
+
+    envelope = EvidenceEnvelope.from_execution(
+        execution={
+            "execution_id": "e",
+            "agent_id": "agent-1",
+            "policy_id": "p",
+            "policy_digest": "d",
+            "epoch": 1,
+            "runtime_id": "runtime-1",
+        },
+        events=({"execution_id": "e", "sequence": 1, "name": "containment_verified", "epoch": 1},),
+    ).with_runtime_pinned_evidence(binding)
+
+    assert envelope.verification["status"] == "verified"
+    assert envelope.proof["runtime_binding"]["observation"]["observed_at"] == 1790790002.0
+
+
+def test_enforcement_cannot_predate_authority_revocation():
+    binding = _binding()
+    enforcement_record = dict(binding["enforcement"]["record"])
+    enforcement_record["occurred_at"] = "2026-09-30T16:59:59Z"
+    import hashlib
+    from agentcontain.evidence import canonical_json
+
+    binding["enforcement"]["record"] = enforcement_record
+    binding["enforcement"]["occurred_at"] = enforcement_record["occurred_at"]
+    binding["enforcement"]["digest"] = "sha256:" + hashlib.sha256(
+        canonical_json(enforcement_record).encode("utf-8")
+    ).hexdigest()
+
+    with pytest.raises(ValueError, match="enforcement predates authority revocation"):
+        EvidenceEnvelope.from_execution(
+            execution={
+                "execution_id": "e",
+                "agent_id": "agent-1",
+                "policy_id": "p",
+                "policy_digest": "d",
+                "epoch": 1,
+                "runtime_id": "runtime-1",
+            },
+            events=({"execution_id": "e", "sequence": 1, "name": "containment_verified", "epoch": 1},),
+        ).with_runtime_pinned_evidence(binding)
