@@ -48,6 +48,32 @@ and digest (sha256: followed by SHA-256 of the record's canonical JSON).
 Canonical JSON uses UTF-8 JSON, lexicographically sorted object keys, and no
 insignificant whitespace.
 
+## Runtime-pinned second evidence
+
+The runtime binding deliberately contains two distinct evidence channels:
+
+1. **enforcement** — the runtime enforcement result produced by the
+   AgentContainment enforcement path.
+2. **observation** — a separately produced runtime observation of the resulting
+   terminal state.
+
+Both records are pinned to the same runtime identity and epoch and each has its
+own canonical digest. The portable verifier checks both records independently
+and requires the observation to occur no earlier than enforcement.
+
+This is a **second-evidence invariant**, not a cryptographic claim of producer
+independence. The v2 artifact alone cannot prove that two records came from
+organizationally or cryptographically independent operators. Establishing that
+stronger property requires an external trust boundary such as independent key
+custody, attestation, or external anchoring.
+
+The distinction matters:
+
+**Two pinned records ≠ independent attestation.**
+
+The former is enforceable by this contract. The latter is a separate assurance
+property.
+
 ## Required invariants
 
 The portable verifier rejects the artifact unless:
@@ -70,8 +96,9 @@ VERIFIED means the independent verifier established that the artifact satisfies
 this contract.
 
 It does not establish that the runtime existed outside the evidence, that the
-producer was honest, that a key was held by a particular operator, that the host
-kernel was uncompromised, or that an underlying policy/business claim was true.
+producer was honest, that a key was held by a particular operator, that the
+host kernel was uncompromised, or that an underlying policy/business claim was
+true.
 
 It also does not establish that the evidence predates an adversary's ability
 to rewrite the producer's entire artifact. External anchoring, key custody, and
