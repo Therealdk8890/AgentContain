@@ -255,6 +255,61 @@ def verify(admission: Admission, *, runtime_binding: dict | None = None):
     return admission.machine.verify()
 
 
+def runtime_pinned_evidence(
+    admission: Admission,
+    *,
+    authority_record: dict,
+    observation,
+) -> EvidenceEnvelope:
+    """Bind real AgentContainment enforcement and observation to one epoch."""
+    identity = admission.identity
+    runtime_id = identity.runtime_id
+    if not runtime_id:
+        raise RuntimeError("runtime identity is required for pinned evidence")
+
+    report = getattr(admission.engine, "last_report", None)
+    export = getattr(report, "enforcement_evidence_record", None)
+    if export is None:
+        raise RuntimeError("runtime engine does not expose canonical enforcement evidence")
+    enforcement = export(runtime_id)
+
+    if not hasattr(observation, "verify_integrity") or not observation.verify_integrity():
+        raise RuntimeError("independent runtime observation failed integrity verification")
+    observation_payload = observation.payload()
+    observation_digest = "sha256:" + observation.digest
+    if observation_payload.get("runtime_id") != runtime_id:
+        raise RuntimeError("runtime observation runtime_id does not match execution")
+    if observation_payload.get("agent_id") != identity.agent_id:
+        raise RuntimeError("runtime observation agent_id does not match execution")
+    if observation_payload.get("epoch") != identity.epoch:
+        raise RuntimeError("runtime observation epoch does not match execution")
+    if observation_payload.get("state") not in {"contained", "halted"} or observation_payload.get("can_execute") is not False:
+        raise RuntimeError("runtime observation does not prove a non-executable terminal state")
+
+    authority = dict(authority_record)
+    authority.setdefault("runtime_id", runtime_id)
+    authority.setdefault("agent_id", identity.agent_id)
+    authority.setdefault("epoch", identity.epoch)
+    required_authority = {"runtime_id", "agent_id", "epoch", "revoked", "revoked_at", "digest", "record"}
+    if set(authority) != required_authority:
+        raise ValueError("authority record has an invalid pinned-evidence shape")
+
+    binding = {
+        "schema_version": "agentcontain.runtime-binding/v1",
+        "runtime_id": runtime_id,
+        "agent_id": identity.agent_id,
+        "epoch": identity.epoch,
+        "authority": authority,
+        "enforcement": enforcement,
+        "observation": {
+            "digest": observation_digest,
+            "record": observation_payload,
+            "state": "TERMINATED" if observation_payload["state"] == "halted" else "FENCED",
+            "observed_at": observation_payload["observed_at"],
+        },
+    }
+    return evidence_envelope(admission).with_runtime_pinned_evidence(binding)
+
 def issue_recovery_authorization(admission: Admission):
     """Request controller-owned recovery authorization for this execution."""
     operation = getattr(admission.engine, "issue_recovery_authorization", None)
