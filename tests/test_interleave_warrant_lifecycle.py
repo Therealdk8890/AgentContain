@@ -37,6 +37,10 @@ def test_containment_and_verification_are_atomic_across_epoch_change():
             engine=engine,
             runtime_id="runtime-1",
         )
+        # The production Admission uses threading.RLock. Replace only the
+        # per-test instance with interleave-test's modelled RLock so contention
+        # is visible to the deterministic scheduler rather than an OS thread.
+        admission._lock = it.RLock()
         errors = []
 
         def do_contain():
