@@ -315,11 +315,15 @@ def contain(admission: Admission) -> object:
 
 @_synchronized
 def halt(admission: Admission):
-    """Halt through the runtime authority, then record the platform event."""
+    """Halt through runtime authority and revoke execution authority."""
     operation = getattr(admission.engine, "halt", None)
     if operation is None:
         raise RuntimeError("enforcement engine does not expose halt")
     operation()
+    # A successful halt is an execution-authority boundary. Revoke the
+    # current Warrant only after the authoritative runtime halt succeeds so a
+    # failed provider operation does not create a platform/runtime mismatch.
+    _revoke_warrant(admission)
     return admission.machine.halt()
 
 
