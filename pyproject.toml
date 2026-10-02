@@ -23,6 +23,12 @@ agentcontain = "agentcontain.cli:main"
 where = ["."]
 include = ["agentcontain*"]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=7",
+    "interleave-test @ git+https://github.com/Therealdk8890/interleave-test.git",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
