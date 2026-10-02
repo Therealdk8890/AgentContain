@@ -41,8 +41,7 @@ class EnforcementEngine(Protocol):
 
     last_report: ReceiptCapableResult | None
 
-    @_synchronized
-def contain(self) -> ContainmentResult: ...
+    def contain(self) -> ContainmentResult: ...
 
 
 class CredentialAuthority:
@@ -85,7 +84,6 @@ class CredentialAuthority:
         self._store.revoke(credential_id)
 
 
-@dataclass
 def _synchronized(func):
     """Serialize lifecycle snapshots for one Admission without widening authority."""
     def wrapper(admission, *args, **kwargs):
@@ -96,6 +94,7 @@ def _synchronized(func):
     return wrapper
 
 
+@dataclass
 class Admission:
     """Authoritative platform admission result."""
 
@@ -152,16 +151,13 @@ class AgentContainmentRuntimeAdapter:
     def contain(self):
         return self.service.contain(self.agent_id)
 
-    @_synchronized
-def halt(self) -> None:
+    def halt(self) -> None:
         self.controller.halt()
 
-    @_synchronized
-def issue_recovery_authorization(self):
+    def issue_recovery_authorization(self):
         return self.service.issue_recovery_authorization(self.agent_id)
 
-    @_synchronized
-def recover(self, authorization) -> int:
+    def recover(self, authorization) -> int:
         return self.service.recover(self.agent_id, authorization)
 
     def reconcile_containment(self):
@@ -276,6 +272,7 @@ def _issue_current_warrant(admission: Admission) -> Warrant:
     admission.warrant = warrant
     return warrant
 
+@_synchronized
 def contain(admission: Admission) -> object:
     """Invoke authoritative runtime containment and record its platform state.
 
@@ -316,6 +313,7 @@ def contain(admission: Admission) -> object:
     return report
 
 
+@_synchronized
 def halt(admission: Admission):
     """Halt through the runtime authority, then record the platform event."""
     operation = getattr(admission.engine, "halt", None)
@@ -425,6 +423,7 @@ def runtime_pinned_evidence(
     }
     return evidence_envelope(admission).with_runtime_pinned_evidence(binding)
 
+@_synchronized
 def issue_recovery_authorization(admission: Admission):
     """Request controller-owned recovery authorization for this execution."""
     operation = getattr(admission.engine, "issue_recovery_authorization", None)
@@ -433,6 +432,7 @@ def issue_recovery_authorization(admission: Admission):
     return operation()
 
 
+@_synchronized
 def recover(admission: Admission, authorization) -> int:
     """Recover through the controller-owned authority and record lifecycle state."""
     operation = getattr(admission.engine, "recover", None)
