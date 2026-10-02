@@ -110,11 +110,11 @@ WarrantKit is a platform built from components with distinct responsibilities an
 
 | Component | Platform role |
 |---|---|
-| **WarrantKit** | Runtime control layer — authorization, admission, execution identity, authority/credential lifecycle, containment coordination, recovery gating, fleet governance, and evidence correlation. It does not become the universal authority over independently produced facts. |
+| **WarrantKit** | Runtime control layer — authorization, admission, execution identity, authority/credential lifecycle, containment coordination, recovery gating, fleet governance, and evidence-reference binding. A generalized correlation/reconciliation engine is not yet shipped. |
 | **AgentContainment** | Runtime enforcement evidence — fencing, containment, recovery, epoch invalidation, and host/provider enforcement results. |
-| **Warden** | Observation evidence — independently records agent activity and runtime state at its observation boundary. |
-| **ClaimProofKit** | Verification evidence — independently evaluates whether supplied claims/actions are supported by supplied evidence under its verifier rules. |
-| **DProvenanceKit** | Provenance evidence — independently records execution/reasoning provenance and produces verification-oriented proof artifacts and receipts. |
+| [**Warden**](https://github.com/Therealdk8890/warden) | Observation evidence — independently records agent activity and runtime state at its observation boundary. |
+| [**ClaimProofKit**](https://github.com/Therealdk8890/ClaimProofKit) | Verification evidence — independently evaluates whether supplied claims/actions are supported by supplied evidence under its verifier rules. |
+| [**DProvenanceKit**](https://github.com/Therealdk8890/DProvenanceKit) | Provenance evidence — independently records execution/reasoning provenance and produces verification-oriented proof artifacts and receipts. |
 
 The cross-source contract is implemented at the reference/typed-evidence boundary; a generalized correlation engine that automatically reconciles all four sources and emits conflict objects is not yet shipped.
 
@@ -140,8 +140,6 @@ A simplified platform flow is:
                              ▼
                        Audit / Operations
 ```
-
-The supporting components provide isolation, cancellation, concurrency testing, and test-reliability capabilities around that core.
 
 **The agent is never the authority for its own actions — and it is not trusted to kill itself.** WarrantKit applies externally supplied policy and authorization controls; AgentContainment performs the security-critical runtime kill/fencing enforcement; the evidence and verification layers record and evaluate what happened.
 
@@ -185,8 +183,21 @@ The proof is deliberately environment-gated because it requires Linux cgroup v2 
 AGENT_CONTAIN_RUN_REAL_CGROUP=1 pytest -q tests/integration/test_real_cgroup_execution.py
 ```
 
-A successful run is evidence from that tested Linux environment. It does not establish a universal host-security claim. The receipt is HMAC-authenticated and tamper-evident; it is not a non-repudiable attestation.
+A successful run is evidence from that tested Linux environment. It does not establish a universal host-security claim. The receipt is HMAC-authenticated and tamper-evident; it is not a non-repudiable attestation. The HMAC secret is supplied by the operator/deployer to the process that creates the receipt (via the CLI's secret-file or environment-variable path). Anyone who possesses that shared secret can create a valid HMAC, so the receipt does not establish non-repudiable authorship or identify a particular key holder.
 
+
+## Independent verification
+
+WarrantKit publishes a standalone reference verifier for the portable runtime-pinned evidence contract. The verifier uses only the Python standard library: it does not import WarrantKit or AgentContainment and does not consult control-plane state.
+
+This is the intended **“don't trust our code”** path: an exported evidence artifact can be checked by an independent implementation against the published contract.
+
+```bash
+python tools/verify_runtime_evidence.py tests/fixtures/runtime_pinned_evidence.json
+# VERIFIED
+```
+
+The fixture is a contract test artifact, not a claim about a real external execution. The verifier also rejects byte mutation, rewritten-and-rehashed records, runtime identity mismatch, and stale epoch.
 
 ## Proof semantics
 
@@ -210,7 +221,7 @@ WarrantKit is not a replacement for the runtime-security and isolation technolog
 
 | Technology | Primary boundary | What WarrantKit adds |
 |---|---|---|
-| **Tetragon** | Kernel-level runtime observability and policy enforcement, including event monitoring and enforcement actions such as signals/return-value overrides. | For example, WarrantKit can reject a stale agent authority after recovery because its runtime epoch no longer matches, then require fresh authorization and evidence; that authority lifecycle is separate from the kernel event/policy enforcement itself. |
+| **Tetragon** | Kernel-level runtime observability and policy enforcement, including event monitoring and enforcement actions such as signals/return-value overrides. | WarrantKit addresses a different boundary: authority is bound to a runtime epoch, and containment/recovery advances that epoch so stale authority cannot authorize continued execution or recovery. A policy engine can decide what to allow; WarrantKit makes the authority lifecycle and invalidation boundary explicit around that decision. |
 | **seccomp** | Linux system-call filtering for a process. | Agent-specific admission/authority lifecycle, runtime containment coordination, epoch fencing, recovery gating, and structured evidence/proof semantics around the enforcement event. |
 | **gVisor** | Sandboxed application-kernel boundary for containers. | Control-plane authorization and runtime evidence that can sit above an isolation boundary rather than replacing the isolation mechanism. |
 
@@ -236,27 +247,27 @@ Controller isolation remains deployment-sensitive. The repository tests selected
 
 ## Architecture
 
+The control and enforcement boundaries are intentionally separate:
+
+```text
+                         WarrantKit
+              authority / lifecycle / evidence
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+     Authorization   Governance     Evidence refs
+          │              │              │
+          ▼              ▼              ▼
+   AgentContainment    Warden      DProvenanceKit
+   runtime enforcement              ClaimProofKit
+          │              │              │
+          └──────────────┴──────────────┘
+                         │
+                 operator / audit view
 ```
-WarrantKit
-│
-├── Policy / Admission / Identity
-│
-├── AgentContainment
-│   ├── Admission
-│   ├── Fencing
-│   ├── Runtime enforcement
-│   ├── Cgroup containment
-│   └── Egress enforcement
-│
-├── Detection
-├── Recovery
-│   └── Fail-closed recovery
-│
-└── Proof
-    ├── Adversarial evidence
-    ├── Structured proof
-    └── Verification receipts
-```
+
+WarrantKit coordinates authority and lifecycle state; AgentContainment remains the security-critical runtime enforcement boundary. The other sources produce evidence within their own declared boundaries. WarrantKit uses explicit identity and evidence references to relate those sources; it does not treat them as one trust domain.
+
 
 ## Core engine
 
@@ -313,28 +324,6 @@ The design intentionally keeps rollout and fleet observation from becoming the s
 
 The open package provides these as **local governance primitives**. They do not constitute a hosted multi-tenant control plane, server-side RBAC system, or centralized enforcement authority.
 
-## Repository relationship
-
-```
-                 WarrantKit
-          correlation / control layer
-                    │
-       ┌────────────┼────────────┐
-       │            │            │
-    Warden   DProvenanceKit  ClaimProofKit
-  observation  provenance    verification
-       │            │            │
-       └────────────┼────────────┘
-                    │
-             AgentContainment
-             runtime enforcement
-```
-
-WarrantKit is designed to correlate independently derived evidence from these sources. The current shipped boundary is the cross-source contract and typed external references; generalized automatic correlation and conflict objects are not yet shipped. The sources do not form a hierarchy of epistemic authority: each is responsible for facts within its own evidence boundary. Agreement is corroboration; disagreement is an evidence conflict that must remain visible when correlation is performed. AgentContainment remains public and independently usable as the security-critical runtime enforcement engine.
-
-## License
-
-Apache-2.0.
 
 ## Evidence model
 
@@ -345,3 +334,7 @@ The envelope validates execution identity, contiguous event sequencing, supporte
 Governance scope can be attached to execution evidence so downstream systems can associate an execution with its organization, project, runtime, and agent context without giving that governance layer authority over enforcement.
 
 **Evidence is evidence, not authority:** a valid envelope or receipt records and verifies the defined evidence procedure; it does not by itself prove an arbitrary external claim is true.
+
+## License
+
+Apache-2.0.
