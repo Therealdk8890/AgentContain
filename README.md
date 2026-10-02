@@ -27,6 +27,36 @@ This path is intentionally simulated. It demonstrates the authorization/containm
 Use the environment-gated cgroup-v2 integration in the Real workload proof section when evaluating actual host enforcement.
 
 
+## What is a Warrant?
+
+A **Warrant** is WarrantKit's portable authority contract for an individual execution.
+
+It binds:
+
+- execution identity (`agent_id`, `execution_id`)
+- accepted policy identity and canonical policy digest
+- runtime identity and security epoch
+- validity and revocation state
+- permitted capabilities and constraints
+- required enforcement, observation, and verification evidence
+
+A Warrant answers:
+
+> **Under exactly what authority was this execution admitted?**
+
+It does **not** answer whether an action was safe, whether the agent's intent was correct, or whether an external claim is true.
+
+The distinction is deliberate:
+
+**Warrant = authority.**  
+**Evidence = what was observed or produced.**  
+**Verification = whether the defined evidence checks succeeded.**  
+**Receipt = an authenticated record of that evidence.**
+
+Evidence never grants authority, and a Warrant is never derived from evidence.
+
+Epoch binding makes the lifecycle security property explicit: after containment or recovery advances the runtime epoch, the previous Warrant is stale and cannot authorize continued execution or recovery. Recovery therefore requires fresh authority.
+
 ## Implementation status
 
 The table below distinguishes implemented platform capabilities from environment-gated proof and future product work. **Implemented** describes code present in the repository; **CI-tested** means the behavior is covered by automated CI; **Privileged integration-tested** means the proof requires a Linux host with the required kernel/cgroup privileges. A passing test is evidence for the tested environment, not a universal security guarantee.
