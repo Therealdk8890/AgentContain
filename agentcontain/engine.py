@@ -498,6 +498,7 @@ def containment_receipt(admission: Admission, secret: bytes):
         policy_id=admission.identity.policy_id,
         policy_digest=admission.identity.policy_digest,
         runtime_id=admission.identity.runtime_id,
+        warrant_epoch=admission.warrant.runtime.epoch,
         epoch=admission.identity.epoch,
     )
 
