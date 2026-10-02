@@ -24,11 +24,16 @@ class RuntimeReport:
 
 class RuntimeEngine:
     last_report = None
+    halt_should_fail = False
 
     def contain(self):
         self.last_report = RuntimeReport()
         return self.last_report
 
+    def halt(self):
+        if self.halt_should_fail:
+            raise RuntimeError("halt failed")
+    
     def issue_recovery_authorization(self):
         return object()
 
@@ -153,3 +158,57 @@ def test_warrant_binding_rejects_wrong_execution_identity():
             runtime_id="runtime-1",
             epoch=0,
         )
+
+def test_halt_revokes_active_warrant_after_runtime_halt():
+    engine = RuntimeEngine()
+    admission = admit(
+        Policy("production"),
+        agent_id="agent-1",
+        engine=engine,
+        runtime_id="runtime-1",
+    )
+    warrant = admission.warrant
+    assert warrant is not None
+    assert warrant.lifecycle.state == RevocationState.ACTIVE
+
+    from agentcontain.engine import halt
+
+    halt(admission)
+
+    assert admission.machine.state.value == "halted"
+    assert admission.warrant is not None
+    assert admission.warrant.warrant_id == warrant.warrant_id
+    assert admission.warrant.lifecycle.state == RevocationState.REVOKED
+    with pytest.raises(ValueError, match="revoked"):
+        verify_warrant(
+            admission.warrant,
+            execution_id=admission.identity.execution_id,
+            agent_id=admission.identity.agent_id,
+            policy_id=admission.identity.policy_id,
+            policy_digest=admission.identity.policy_digest,
+            runtime_id="runtime-1",
+            epoch=0,
+        )
+
+
+def test_failed_halt_does_not_revoke_warrant():
+    engine = RuntimeEngine()
+    engine.halt_should_fail = True
+    admission = admit(
+        Policy("production"),
+        agent_id="agent-1",
+        engine=engine,
+        runtime_id="runtime-1",
+    )
+    warrant = admission.warrant
+    assert warrant is not None
+
+    from agentcontain.engine import halt
+
+    with pytest.raises(RuntimeError, match="halt failed"):
+        halt(admission)
+
+    assert admission.machine.state.value == "admitted"
+    assert admission.warrant == warrant
+    assert admission.warrant.lifecycle.state == RevocationState.ACTIVE
+
