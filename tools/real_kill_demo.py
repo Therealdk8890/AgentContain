@@ -54,10 +54,18 @@ def main() -> int:
         print("[2/6] Admitting execution and issuing Warrant...")
         policy = Policy("real-kill-demo", capabilities=("demo-workload",))
         engine = build_agentcontainment_engine(agent_id, cgroup_path=str(cgroup))
-        admission = admit(policy, agent_id=agent_id, engine=engine)
+        admission = admit(
+            policy,
+            agent_id=agent_id,
+            engine=engine,
+            runtime_id=engine.runtime_id,
+        )
+        if admission.warrant is None:
+            raise RuntimeError("runtime admission did not issue a Warrant")
         print(f"      execution={admission.identity.execution_id}")
+        print(f"      runtime={admission.identity.runtime_id}")
         print(f"      epoch={admission.identity.epoch}")
-        print("      Warrant: ACTIVE")
+        print(f"      Warrant: {admission.warrant.lifecycle.state.value.upper()}")
 
         print("[3/6] Invoking external containment...")
         started = time.monotonic()
