@@ -69,6 +69,17 @@ def test_external_evidence_reference_rejects_unknown_source() -> None:
         raise AssertionError("unknown evidence source was accepted")
 
 
+
+def test_evidentia_is_an_evidence_source_not_an_authority_source() -> None:
+    reference = _reference(
+        source="evidentia",
+        reference_id="EV-REAL-PROOF-PLACEHOLDER",
+        relation="attests",
+    )
+
+    assert reference.source == "evidentia"
+    assert reference.relation == "attests"
+
 def test_external_evidence_reference_rejects_bad_digest() -> None:
     try:
         _reference(digest="sha256:not-a-digest")

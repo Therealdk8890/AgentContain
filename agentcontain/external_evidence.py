@@ -18,6 +18,7 @@ VALID_SOURCES = {
     "agentcontainment",
     "dprovenancekit",
     "claimproofkit",
+    "evidentia",
 }
 VALID_RELATIONS = {
     "observed_during",
