@@ -30,7 +30,7 @@ jobs:
         run: python -m pip install -e '.[test]'
 
       - name: Verify package metadata
-        run: python -c 'import pathlib, re; text=pathlib.Path("pyproject.toml").read_text(); assert re.search(r"^version = \"0\\.1\\.1\"$", text, re.M)'
+        run: python -c 'import pathlib; text=pathlib.Path("pyproject.toml").read_text(); assert "version = \"0.1.1\"" in text'
 
       - name: Verify portable evidence fixture
         run: python tools/verify_runtime_evidence.py tests/fixtures/runtime_pinned_evidence.json
