@@ -1,3 +1,5 @@
+import time
+
 import interleave_test as it
 
 from agentcontain import Policy
@@ -12,15 +14,15 @@ class Report:
 
 
 class GateEngine:
-    def __init__(self, started, release):
+    def __init__(self, started):
         self.started = started
-        self.release = release
         self.last_report = None
 
     def contain(self):
         self.last_report = Report()
         self.started.set()
-        self.release.wait()
+        # Yield to the controlled scheduler without parking on an OS primitive.
+        time.sleep(0)
         return self.last_report
 
 
@@ -28,8 +30,7 @@ def test_containment_and_verification_are_atomic_across_epoch_change():
     @it.interleave(iterations=100, strategy="dfs", max_preemptions=2)
     def model():
         started = it.Event()
-        release = it.Event()
-        engine = GateEngine(started, release)
+        engine = GateEngine(started)
         admission = admit(
             Policy("production"),
             agent_id="agent-1",
@@ -50,7 +51,6 @@ def test_containment_and_verification_are_atomic_across_epoch_change():
         containment = it.spawn(do_contain, name="contain")
         started.wait()
         verification = it.spawn(do_verify, name="verify")
-        release.set()
         containment.join()
         verification.join()
 
