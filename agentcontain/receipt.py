@@ -22,6 +22,7 @@ class WarrantBoundReceipt:
     policy_id: str
     policy_digest: str
     runtime_id: str
+    warrant_epoch: int
     epoch: int
 
     def __getattr__(self, name: str) -> Any:
@@ -46,6 +47,7 @@ class WarrantBoundReceipt:
                 "policy_id": self.policy_id,
                 "policy_digest": self.policy_digest,
                 "runtime_id": self.runtime_id,
+                "warrant_epoch": self.warrant_epoch,
                 "epoch": self.epoch,
             },
         }
