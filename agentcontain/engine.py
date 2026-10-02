@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Protocol
 from uuid import uuid4
@@ -40,7 +41,8 @@ class EnforcementEngine(Protocol):
 
     last_report: ReceiptCapableResult | None
 
-    def contain(self) -> ContainmentResult: ...
+    @_synchronized
+def contain(self) -> ContainmentResult: ...
 
 
 class CredentialAuthority:
@@ -84,6 +86,16 @@ class CredentialAuthority:
 
 
 @dataclass
+def _synchronized(func):
+    """Serialize lifecycle snapshots for one Admission without widening authority."""
+    def wrapper(admission, *args, **kwargs):
+        with admission._lock:
+            return func(admission, *args, **kwargs)
+    wrapper.__name__ = func.__name__
+    wrapper.__doc__ = func.__doc__
+    return wrapper
+
+
 class Admission:
     """Authoritative platform admission result."""
 
@@ -92,6 +104,7 @@ class Admission:
     engine: EnforcementEngine
     policy: PolicyBundle
     warrant: Warrant | None = None
+    _lock: threading.RLock = field(default_factory=threading.RLock, repr=False, compare=False)
 
 
 class AgentContainmentRuntimeAdapter:
@@ -139,13 +152,16 @@ class AgentContainmentRuntimeAdapter:
     def contain(self):
         return self.service.contain(self.agent_id)
 
-    def halt(self) -> None:
+    @_synchronized
+def halt(self) -> None:
         self.controller.halt()
 
-    def issue_recovery_authorization(self):
+    @_synchronized
+def issue_recovery_authorization(self):
         return self.service.issue_recovery_authorization(self.agent_id)
 
-    def recover(self, authorization) -> int:
+    @_synchronized
+def recover(self, authorization) -> int:
         return self.service.recover(self.agent_id, authorization)
 
     def reconcile_containment(self):
@@ -217,6 +233,7 @@ def admit(
         warrant=warrant,
     )
 
+@_synchronized
 def detect(admission: Admission, details: dict[str, str] | None = None):
     """Record an observed anomaly without changing runtime enforcement."""
     return admission.machine.detect(details)
@@ -308,6 +325,7 @@ def halt(admission: Admission):
     return admission.machine.halt()
 
 
+@_synchronized
 def verify(admission: Admission, *, runtime_binding: dict | None = None):
     """Verify authoritative runtime proof, optionally requiring second evidence.
 
@@ -344,6 +362,7 @@ def verify(admission: Admission, *, runtime_binding: dict | None = None):
     return admission.machine.verify()
 
 
+@_synchronized
 def runtime_pinned_evidence(
     admission: Admission,
     *,
@@ -439,6 +458,7 @@ def recover(admission: Admission, authorization) -> int:
     return epoch
 
 
+@_synchronized
 def recontain(admission: Admission):
     """Re-verify external enforcement without granting execution authority."""
     operation = getattr(admission.engine, "recontain_enforcers", None)
@@ -450,6 +470,7 @@ def recontain(admission: Admission):
     return admission.machine.recontain()
 
 
+@_synchronized
 def containment_receipt(admission: Admission, secret: bytes):
     """Create a signed/tamper-evident receipt bound to platform identity."""
     report = getattr(admission.engine, "last_report", None)
@@ -481,6 +502,7 @@ def containment_receipt(admission: Admission, secret: bytes):
     )
 
 
+@_synchronized
 def evidence_envelope(admission: Admission, *, fleet: FleetRegistry | None = None) -> EvidenceEnvelope:
     """Build evidence from the accepted policy, runtime report, and event log.
 
