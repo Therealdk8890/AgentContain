@@ -37,6 +37,7 @@ from .policy_reconciliation import (
 )
 from .policy_rollout import Rollout, RolloutState
 from .policy_distribution import PolicyBundle, PolicyRegistry
+from .receipt import WarrantBoundReceipt
 from .state import LifecycleState, PlatformStateMachine
 from .warrant import (
     EvidenceRequirements,
@@ -90,6 +91,7 @@ __all__ = [
     "RolloutState",
     "PolicyBundle",
     "PolicyRegistry",
+    "WarrantBoundReceipt",
     "admit",
     "build_agentcontainment_engine",
     "canonical_json",

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from agentcontain import Policy
+from agentcontain import Policy, WarrantBoundReceipt
 from agentcontain.engine import (
     admit,
     contain,
@@ -115,6 +115,57 @@ def test_containment_receipt_binds_platform_identity():
     receipt = containment_receipt(admission, b"secret")
     assert receipt.execution_id == admission.identity.execution_id
     assert receipt.policy_id == "production"
+
+def test_runtime_receipt_is_bound_to_warrant_without_changing_signed_receipt():
+    class SignedReceipt:
+        execution_id = "unused"
+        policy_id = "unused"
+
+    class ReceiptReport:
+        complete = True
+        epoch = 1
+
+        def to_receipt(self, secret, *, execution_id, policy_id):
+            return SignedReceipt()
+
+    class ReceiptEngine(FakeEngine):
+        def contain(self):
+            self.calls += 1
+            self.last_report = ReceiptReport()
+            return self.last_report
+
+    admission = admit(
+        Policy("production"),
+        agent_id="agent-1",
+        engine=ReceiptEngine(),
+        runtime_id="runtime-1",
+    )
+    contain(admission)
+
+    receipt = containment_receipt(admission, b"secret")
+
+    assert isinstance(receipt, WarrantBoundReceipt)
+    assert receipt.warrant_id == admission.warrant.warrant_id
+    assert receipt.execution_id == admission.identity.execution_id
+    assert receipt.agent_id == admission.identity.agent_id
+    assert receipt.policy_digest == admission.identity.policy_digest
+    assert receipt.runtime_id == "runtime-1"
+    assert receipt.epoch == 1
+    assert receipt.runtime_receipt is not None
+    assert receipt.to_dict()["warrant_binding"]["warrant_id"] == admission.warrant.warrant_id
+
+    with pytest.raises(TypeError, match="warrant"):
+        from agentcontain.warrant import verify_warrant
+        verify_warrant(
+            receipt,
+            execution_id=admission.identity.execution_id,
+            agent_id=admission.identity.agent_id,
+            policy_id=admission.identity.policy_id,
+            policy_digest=admission.identity.policy_digest,
+            runtime_id="runtime-1",
+            epoch=1,
+        )
+
 
 def test_evidence_uses_locally_accepted_policy_identity():
     policy = Policy("production", version=7, capabilities=("read",))

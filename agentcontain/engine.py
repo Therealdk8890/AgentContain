@@ -12,6 +12,7 @@ from .fleet import FleetRegistry
 from .identity import ExecutionIdentity
 from .policy import Policy
 from .policy_distribution import PolicyBundle, PolicyRegistry
+from .receipt import WarrantBoundReceipt
 from .state import PlatformStateMachine
 from .warrant import Warrant, RevocationState, verify_warrant
 
@@ -459,10 +460,24 @@ def containment_receipt(admission: Admission, secret: bytes):
         raise RuntimeError(
             "containment report epoch does not match current execution epoch"
         )
-    return report.to_receipt(
+    runtime_receipt = report.to_receipt(
         secret,
         execution_id=admission.identity.execution_id,
         policy_id=admission.identity.policy_id,
+    )
+    if admission.warrant is None:
+        return runtime_receipt
+    if admission.identity.runtime_id is None:
+        raise RuntimeError("runtime identity is required for Warrant-bound receipts")
+    return WarrantBoundReceipt(
+        runtime_receipt=runtime_receipt,
+        warrant_id=admission.warrant.warrant_id,
+        execution_id=admission.identity.execution_id,
+        agent_id=admission.identity.agent_id,
+        policy_id=admission.identity.policy_id,
+        policy_digest=admission.identity.policy_digest,
+        runtime_id=admission.identity.runtime_id,
+        epoch=admission.identity.epoch,
     )
 
 
