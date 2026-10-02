@@ -9,6 +9,7 @@ The platform must correlate four kinds of evidence without turning any subsystem
 - **AgentContainment** — what runtime enforcement actually did.
 - **DProvenanceKit** — what instrumented execution path was recorded and how its integrity was checked.
 - **ClaimProofKit** — whether supplied claims were supported by supplied evidence.
+- **Evidentia** — externally verifiable Proof metadata and chain-anchor consistency.
 
 The contract is deliberately reference-oriented. AgentContain should not copy an entire external trace, observation database, or verification report into its own event model.
 
@@ -20,6 +21,7 @@ The contract is deliberately reference-oriented. AgentContain should not copy an
 | AgentContainment | Runtime enforcement and host verification | Truth of external claims |
 | DProvenanceKit | Recorded instrumented execution path and its integrity | Soundness of model reasoning |
 | ClaimProofKit | Verification result for supplied claim/evidence pairs | Runtime authorization or host enforcement |
+| Evidentia | Proof-record integrity and chain-anchor consistency | Runtime authorization, enforcement, or business truth |
 | AgentContain | Incident lifecycle, correlation, operator workflow | Authority over the local enforcement boundary |
 
 > **AgentContain coordinates evidence; it does not manufacture authority by aggregating evidence.**
@@ -77,6 +79,9 @@ This is the authoritative runtime path. AgentContain consumes containment result
 ### DProvenanceKit → AgentContain
 DProvenanceKit remains the provenance/trace layer. AgentContain should reference trace identifier, trace fingerprint, baseline/candidate relationship, regression verdict, attestation/proof-pack identifier, and attestation status. AgentContain must not reinterpret a DPK trace as runtime security evidence.
 
+### Evidentia → AgentContain
+Evidentia remains an external proof layer. AgentContain may reference a Proof identifier, event hash, signature metadata, verification status, export package, and chain-anchor metadata when supplied. These references are evidence only; they must never authorize execution, release containment, or be treated as proof that the underlying AI output or business decision was correct. The first WarrantKit interoperability test must use a real Evidentia Proof/export artifact from the actual pipeline; synthetic Evidentia provenance is explicitly out of scope.
+
 ### ClaimProofKit → AgentContain
 ClaimProofKit remains the claim/evidence verification layer. AgentContain may associate report identifier, policy fingerprint, claim fingerprints, evidence fingerprints, verifier version, verdict, and benchmark/release-gate status where relevant. A claim-proof verdict must never transition the runtime state machine by itself.
 
@@ -111,7 +116,7 @@ First implementation:
 3. expose references through the existing `EvidenceEnvelope`;
 4. add read-only operator projection of those references;
 5. add fixture-based interoperability tests;
-6. add adapters independently, starting with Warden observation and DProvenanceKit provenance.
+6. add adapters independently, starting with Warden observation and DProvenanceKit provenance; add Evidentia only after a real Proof/export artifact is available for interoperability verification.
 
 This keeps AgentContain stdlib-only and lets each project evolve independently.
 
