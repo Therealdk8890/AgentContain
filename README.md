@@ -100,12 +100,11 @@ The privileged Linux proof uses a real child process and a real cgroup-v2 bounda
 Run:
 
 ```bash
-AGENT_CONTAIN_RUN_REAL_CGROUP=1 \
-WARRANTKIT_REAL_KILL_ARTIFACT=./real-kill-runtime-evidence.json \
-pytest -q tests/integration/test_real_cgroup_execution.py
+AGENT_CONTAIN_RUN_REAL_CGROUP=1 WARRANTKIT_REAL_KILL_ARTIFACT=./real-kill-runtime-evidence.json \
+python tools/run_real_kill_demo.py
 ```
 
-The test emits a portable evidence artifact and passes it through `tools/verify_runtime_evidence.py`. The fixture used by the verifier is a contract test; the real-kill path is the host-dependent proof.
+The demo emits a portable evidence artifact and passes it through `tools/verify_runtime_evidence.py`. The fixture used by the verifier is a contract test; the real-kill path is the host-dependent proof. The lower-level pytest remains available for regression coverage.
 
 **What this proves:** the tested Linux environment can enforce the configured cgroup-v2 kill/fence boundary, produce runtime-pinned evidence, and have that artifact independently checked.
 
