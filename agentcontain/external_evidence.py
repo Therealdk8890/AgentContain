@@ -8,6 +8,7 @@ external evidence can never authorize execution or mutate runtime state.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import re
 from typing import Any, Mapping
 
@@ -29,6 +30,13 @@ VALID_RELATIONS = {
     "contradicts",
 }
 _SHA256_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+
+
+def digest_artifact(artifact: bytes) -> str:
+    """Return the content digest for the exact external artifact bytes."""
+    if not isinstance(artifact, bytes):
+        raise TypeError("artifact must be bytes")
+    return "sha256:" + hashlib.sha256(artifact).hexdigest()
 
 
 @dataclass(frozen=True)
