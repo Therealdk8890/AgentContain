@@ -145,6 +145,16 @@ def main() -> int:
                     "name": "containment_verified",
                     "epoch": admission.identity.epoch,
                 },
+                {
+                    "execution_id": admission.identity.execution_id,
+                    "sequence": 2,
+                    "name": "stale_authority_rejected",
+                    "epoch": admission.identity.epoch,
+                    "details": {
+                        "warrant_epoch": replayed_warrant.runtime.epoch,
+                        "reason": "runtime_epoch_mismatch",
+                    },
+                },
             ),
             verification={"status": "observed"},
         ).with_runtime_pinned_evidence(binding)
