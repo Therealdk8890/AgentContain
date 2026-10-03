@@ -43,7 +43,6 @@ def main() -> int:
 
     supervisor = LinuxCgroupSupervisor("auto")
     agent_id = f"warrantkit-real-kill-{os.getpid()}"
-    runtime_id = f"runtime-{agent_id}"
     cgroup = supervisor.create_agent(agent_id)
     child = None
 
@@ -56,6 +55,7 @@ def main() -> int:
 
         print("[2/7] admitting workload under Warrant")
         engine = build_agentcontainment_engine(agent_id, cgroup_path=str(cgroup))
+        runtime_id = engine.runtime_id
         admission = admit(
             Policy("real-kill-proof", capabilities=("test-workload",)),
             agent_id=agent_id,
