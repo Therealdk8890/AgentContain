@@ -40,18 +40,17 @@ class VerificationResult:
 
         if conflicts:
             status = VerificationStatus.CONFLICT
-        elif not authenticated:
+        elif not self.authenticated:
             status = VerificationStatus.UNAUTHENTICATED
         elif missing or not all(
             (
-                authority_valid,
-                runtime_valid,
-                correlated,
-                verifier_executed,
+                self.authority_valid,
+                self.runtime_valid,
+                self.correlated,
+                self.anchored,
+                self.verifier_executed,
             )
         ):
-            status = VerificationStatus.INCOMPLETE
-        elif not anchored:
             status = VerificationStatus.INCOMPLETE
         else:
             status = VerificationStatus.VERIFIED
