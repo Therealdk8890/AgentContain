@@ -5,8 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Mapping
+import re
 
-from .external_evidence import VALID_SOURCES, _SHA256_RE
+from .external_evidence import VALID_SOURCES
+
+_SHA256_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 SCHEMA_VERSION = "warrantkit.external-evidence/v1"
