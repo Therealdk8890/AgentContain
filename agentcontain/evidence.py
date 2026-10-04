@@ -271,7 +271,11 @@ class EvidenceEnvelope:
         verification.update({
             "status": "verified",
             "method": "runtime-pinned-second-evidence",
-            "scope": "external-runtime-enforcement",\n            "verification_semantics": (\n                "verified means the defined runtime-pinning checks passed; " \n                "it does not establish the truth of unrelated claims"\n            ),
+            "scope": "external-runtime-enforcement",
+            "verification_semantics": (
+                "verified means the defined runtime-pinning checks passed; "
+                "it does not establish the truth of unrelated claims"
+            ),
         })
         return EvidenceEnvelope(
             execution=self.execution,
