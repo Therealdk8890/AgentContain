@@ -9,7 +9,7 @@ from agentcontain.engine import (
     recover,
 )
 from agentcontain.policy import Policy
-from agentcontain.warrant import RevocationState, verify_warrant
+from agentcontain.warrant import Warrant, RevocationState, verify_warrant
 
 
 class RuntimeReport:
@@ -99,6 +99,35 @@ def test_containment_revokes_pre_containment_warrant():
         )
 
 
+def test_pre_containment_warrant_replay_fails_on_new_epoch():
+    engine = RuntimeEngine()
+    admission = admit(
+        Policy("production"),
+        agent_id="agent-1",
+        engine=engine,
+        runtime_id="runtime-1",
+    )
+    assert admission.warrant is not None
+
+    # Serialize the active pre-containment authority exactly as an external
+    # caller could retain it. After containment, replaying that snapshot must
+    # fail on the new runtime epoch even before explicit revocation is considered.
+    stale_snapshot = admission.warrant.to_dict()
+    contain(admission)
+    replayed_warrant = Warrant.from_dict(stale_snapshot)
+
+    with pytest.raises(ValueError, match="epoch does not match"):
+        verify_warrant(
+            replayed_warrant,
+            execution_id=admission.identity.execution_id,
+            agent_id=admission.identity.agent_id,
+            policy_id=admission.identity.policy_id,
+            policy_digest=admission.identity.policy_digest,
+            runtime_id="runtime-1",
+            epoch=admission.identity.epoch,
+        )
+
+
 def test_recovery_issues_fresh_warrant_only_after_new_epoch():
     engine = RuntimeEngine()
     admission = admit(
@@ -136,6 +165,32 @@ def test_recovery_issues_fresh_warrant_only_after_new_epoch():
         runtime_id="runtime-1",
         epoch=2,
     )
+
+
+
+def test_stale_runtime_report_cannot_verify_after_epoch_advance():
+    engine = RuntimeEngine()
+    admission = admit(
+        Policy("production"),
+        agent_id="agent-1",
+        engine=engine,
+        runtime_id="runtime-1",
+    )
+
+    contain(admission)
+    assert admission.identity.epoch == 1
+
+    # Simulate a late report from the pre-containment epoch. The existing
+    # verifier must reject it rather than projecting old evidence into the
+    # current epoch.
+    stale_report = RuntimeReport()
+    stale_report.epoch = 0
+    engine.last_report = stale_report
+
+    from agentcontain.engine import verify
+
+    with pytest.raises(RuntimeError, match="verification report is unavailable"):
+        verify(admission)
 
 
 def test_warrant_binding_rejects_wrong_execution_identity():
