@@ -15,7 +15,7 @@ VALID_STATUSES = {"observed", "verified", "degraded", "tampered", "incomplete"}
 
 
 def canonical_json(value: Any) -> str:
-    """Return deterministic JSON suitable for hashing, storage, and transport."""
+    """Canonicalize evidence JSON for content hashing and transport.\n\nThis is the EvidenceEnvelope serialization profile. It is intentionally\nseparate from the Ed25519 attestation serialization profile in\n``attestation.py``; changing either profile can change security-relevant\ndigests or signatures.\n"""
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
@@ -272,6 +272,10 @@ class EvidenceEnvelope:
             "status": "verified",
             "method": "runtime-pinned-second-evidence",
             "scope": "external-runtime-enforcement",
+            "verification_semantics": (
+                "verified means the defined runtime-pinning checks passed; "
+                "it does not establish the truth of unrelated claims"
+            ),
         })
         return EvidenceEnvelope(
             execution=self.execution,
